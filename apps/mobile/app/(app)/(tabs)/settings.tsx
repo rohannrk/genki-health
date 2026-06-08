@@ -168,6 +168,36 @@ export default function SettingsTab() {
           })
         )}
 
+        <View className="flex-row justify-between items-center mb-2 mt-4 px-1">
+          <Text className="text-sm font-semibold text-slate-700">Privacy &amp; Sharing</Text>
+        </View>
+
+        <TouchableOpacity
+          onPress={() => router.push('/(app)/consent' as Href)}
+          className="bg-white rounded-xl border border-slate-200 p-4 flex-row justify-between items-center mb-4"
+        >
+          <View className="flex-1 pr-3">
+            <Text className="text-sm font-semibold text-slate-700">Consent &amp; Privacy</Text>
+            <Text className="text-xs text-slate-400 font-medium mt-1">
+              AI opt-in, data deletion, activity log
+            </Text>
+          </View>
+          <Text className="text-slate-400">➔</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => router.push('/(app)/share' as Href)}
+          className="bg-white rounded-xl border border-slate-200 p-4 flex-row justify-between items-center mb-4"
+        >
+          <View className="flex-1 pr-3">
+            <Text className="text-sm font-semibold text-slate-700">Share Records</Text>
+            <Text className="text-xs text-slate-400 font-medium mt-1">
+              Time-limited, view-only links &amp; PDF export
+            </Text>
+          </View>
+          <Text className="text-slate-400">➔</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           onPress={handleLogout}
           disabled={isSigningOut}

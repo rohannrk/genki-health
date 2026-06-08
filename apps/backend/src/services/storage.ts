@@ -29,6 +29,26 @@ export const getPresignedUploadUrl = async (
 };
 
 /**
+ * Uploads a buffer directly to R2 from the server (used for generated artifacts
+ * like compiled PDF exports, which are produced server-side rather than uploaded
+ * by the client).
+ */
+export const uploadBuffer = async (
+  fileKey: string,
+  body: Uint8Array | Buffer,
+  contentType: string
+): Promise<void> => {
+  await r2Client.send(
+    new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: fileKey,
+      Body: body,
+      ContentType: contentType,
+    })
+  );
+};
+
+/**
  * Generates a presigned URL to GET (download) a file directly from R2.
  * Valid for 1 hour (3600 seconds).
  */

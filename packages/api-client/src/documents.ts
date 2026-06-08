@@ -21,6 +21,11 @@ export interface DocumentListOptions {
   offset?: number;
 }
 
+export interface ExportPdfInput {
+  profileId: string;
+  documentIds?: string[];
+}
+
 export const documents = {
   async getUploadUrl(
     profileId: string,
@@ -72,6 +77,16 @@ export const documents = {
       token
     );
     return (res as any).data;
+  },
+
+  /** Compile selected records into a PDF; returns a presigned download URL. */
+  async exportPdf(data: ExportPdfInput, token: string): Promise<string> {
+    const res = await post<{ data: { downloadUrl: string } }>(
+      '/api/v1/documents/export-pdf',
+      data,
+      token
+    );
+    return (res as any).data.downloadUrl;
   },
 
   /** Upload a file directly to R2 via presigned URL, reporting progress */

@@ -1,21 +1,24 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { eq, and, desc, count } from 'drizzle-orm';
+import { eq, and, desc, count, inArray } from 'drizzle-orm';
 import { db, MedicalDocument } from '../db';
 import { medicalDocuments } from '../db/schema/documents';
 import { patientProfiles } from '../db/schema/profiles';
-import { auditLogs } from '../db/schema/audit';
+import { logAudit } from '../services/audit';
 import { requireAuth } from '../middleware/auth';
 import { getOrCreateUser } from '../middleware/getOrCreateUser';
 import { validate } from '../middleware/validate';
+import { randomUUID } from 'crypto';
 import {
   generateFileKey,
   getPresignedUploadUrl,
   getPresignedDownloadUrl,
   deleteFile,
   fileExists,
+  uploadBuffer,
 } from '../services/storage';
 import { processDocument } from '../services/ingestion';
+import { buildRecordsPdf } from '../services/pdf';
 
 const router = Router();
 
@@ -52,6 +55,13 @@ const listQuerySchema = {
 const uuidParamSchema = {
   params: z.object({
     documentId: z.string().uuid('Invalid document ID format'),
+  }),
+};
+
+const exportPdfSchema = {
+  body: z.object({
+    profileId: z.string().uuid('Invalid profile ID format'),
+    documentIds: z.array(z.string().uuid()).optional(),
   }),
 };
 
@@ -141,15 +151,7 @@ router.post(
         .returning();
 
       // 5. Log audit
-      db.insert(auditLogs)
-        .values({
-          userId,
-          action: 'upload_start',
-          documentIds: [newDoc.id],
-          metadata: {},
-          ipAddress: req.ip || null,
-        })
-        .catch((err) => console.error('Audit failed:', err));
+      logAudit({ userId, action: 'upload_start', documentIds: [newDoc.id], req });
 
       // 6. Return response
       res.status(200).json({
@@ -160,6 +162,66 @@ router.post(
           fileKey,
         },
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * POST /documents/export-pdf
+ * Compiles the selected records (or all of a profile's records) into a single PDF,
+ * stores it in R2, and returns a short-lived presigned download URL.
+ */
+router.post(
+  '/export-pdf',
+  validate(exportPdfSchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.dbUser!.id;
+      const { profileId, documentIds } = req.body as { profileId: string; documentIds?: string[] };
+
+      // Verify profile ownership.
+      const profile = await db.query.patientProfiles.findFirst({
+        where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, userId)),
+      });
+      if (!profile) {
+        res.status(403).json({
+          status: 'error',
+          message: 'Access denied: You do not own this patient profile',
+        });
+        return;
+      }
+
+      // Fetch documents — scoped to the requested IDs if provided, else all.
+      const filters = [eq(medicalDocuments.profileId, profileId)];
+      if (documentIds && documentIds.length > 0) {
+        filters.push(inArray(medicalDocuments.id, documentIds));
+      }
+      const docs = await db.query.medicalDocuments.findMany({
+        where: and(...filters),
+        orderBy: desc(medicalDocuments.createdAt),
+      });
+
+      if (docs.length === 0) {
+        res.status(400).json({ status: 'error', message: 'No documents to export' });
+        return;
+      }
+
+      const pdfBytes = await buildRecordsPdf(profile, docs);
+      const fileKey = `exports/${profileId}/${randomUUID()}.pdf`;
+      await uploadBuffer(fileKey, pdfBytes, 'application/pdf');
+      const downloadUrl = await getPresignedDownloadUrl(fileKey);
+
+      logAudit({
+        userId,
+        action: 'pdf_export',
+        documentIds: docs.map((d) => d.id),
+        metadata: { profileId, count: docs.length },
+        req,
+      });
+
+      res.status(200).json({ status: 'success', data: { downloadUrl } });
     } catch (error) {
       next(error);
     }
@@ -403,15 +465,7 @@ router.delete(
       await db.delete(medicalDocuments).where(eq(medicalDocuments.id, documentId));
 
       // 4. Log audit: action='delete_document'
-      db.insert(auditLogs)
-        .values({
-          userId,
-          action: 'delete_document',
-          documentIds: [documentId],
-          metadata: {},
-          ipAddress: req.ip || null,
-        })
-        .catch((err) => console.error('Audit failed:', err));
+      logAudit({ userId, action: 'delete_document', documentIds: [documentId], req });
 
       // 5. Return 204
       res.status(204).send();

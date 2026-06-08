@@ -1,14 +1,15 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { eq, and, asc } from 'drizzle-orm';
+import { eq, and, asc, desc } from 'drizzle-orm';
 import { db } from '../db';
 import { patientProfiles } from '../db/schema/profiles';
 import { medicalDocuments } from '../db/schema/documents';
-import { auditLogs } from '../db/schema/audit';
 import { requireAuth } from '../middleware/auth';
 import { getOrCreateUser } from '../middleware/getOrCreateUser';
 import { validate } from '../middleware/validate';
-import { deleteFile } from '../services/storage';
+import { logAudit } from '../services/audit';
+import { deleteFile, getPresignedDownloadUrl } from '../services/storage';
+import { buildFhirBundle } from '../services/fhir';
 
 const router = Router();
 
@@ -96,15 +97,12 @@ router.post(
         .returning();
 
       // Audit Log
-      db.insert(auditLogs)
-        .values({
-          userId: ownerId,
-          action: 'create_profile',
-          documentIds: [],
-          metadata: { profileId: newProfile.id, name },
-          ipAddress: req.ip || null,
-        })
-        .catch((err) => console.error('Audit failed:', err));
+      logAudit({
+        userId: ownerId,
+        action: 'create_profile',
+        metadata: { profileId: newProfile.id, name },
+        req,
+      });
 
       res.status(201).json({
         status: 'success',
@@ -158,15 +156,12 @@ router.patch(
         .returning();
 
       // Audit Log
-      db.insert(auditLogs)
-        .values({
-          userId: ownerId,
-          action: 'update_profile',
-          documentIds: [],
-          metadata: { profileId: id, fields: Object.keys(updates) },
-          ipAddress: req.ip || null,
-        })
-        .catch((err) => console.error('Audit failed:', err));
+      logAudit({
+        userId: ownerId,
+        action: 'update_profile',
+        metadata: { profileId: id, fields: Object.keys(updates) },
+        req,
+      });
 
       res.status(200).json({
         status: 'success',
@@ -243,18 +238,60 @@ router.delete(
         .where(eq(patientProfiles.id, id));
 
       // Audit Log: action='delete_profile'
-      db.insert(auditLogs)
-        .values({
-          userId: ownerId,
-          action: 'delete_profile',
-          documentIds: [],
-          metadata: { profileId: id },
-          ipAddress: req.ip || null,
-        })
-        .catch((err) => console.error('Audit failed:', err));
+      logAudit({ userId: ownerId, action: 'delete_profile', metadata: { profileId: id }, req });
 
       // Return 204 No Content
       res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /profiles/:id/fhir
+ * Exports the profile and its documents as a FHIR R4 Bundle (collection) for
+ * hospital handoffs. Returns the raw Bundle JSON (not wrapped in the envelope).
+ */
+router.get(
+  '/:id/fhir',
+  validate(uuidParamSchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const ownerId = req.dbUser!.id;
+      const { id } = req.params;
+
+      const profile = await db.query.patientProfiles.findFirst({
+        where: and(eq(patientProfiles.id, id), eq(patientProfiles.ownerId, ownerId)),
+      });
+      if (!profile) {
+        res.status(404).json({ status: 'error', message: 'Profile not found' });
+        return;
+      }
+
+      const docs = await db.query.medicalDocuments.findMany({
+        where: eq(medicalDocuments.profileId, id),
+        orderBy: desc(medicalDocuments.createdAt),
+      });
+
+      const entries = await Promise.all(
+        docs.map(async (document) => ({
+          document,
+          attachmentUrl: await getPresignedDownloadUrl(document.fileKey),
+        }))
+      );
+
+      const bundle = buildFhirBundle(profile, entries);
+
+      logAudit({
+        userId: ownerId,
+        action: 'fhir_export',
+        documentIds: docs.map((d) => d.id),
+        metadata: { profileId: id, count: docs.length },
+        req,
+      });
+
+      res.status(200).json(bundle);
     } catch (error) {
       next(error);
     }

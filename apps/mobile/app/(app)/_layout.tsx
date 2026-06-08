@@ -43,6 +43,8 @@ export default function AppLayout() {
       <Stack.Screen name="create-profile" />
       <Stack.Screen name="upload" options={{ presentation: 'modal' }} />
       <Stack.Screen name="document/[id]" />
+      <Stack.Screen name="consent" />
+      <Stack.Screen name="share" />
     </Stack>
   );
 }
