@@ -1,30 +1,36 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Redirect, Stack, useSegments } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { useProfile } from '../../src/context/ProfileContext';
+import { hasSeenOnboarding } from '../../src/lib/storage';
 
 export default function AppLayout() {
   const { isSignedIn, isLoaded } = useAuth();
   const { profiles, isLoading } = useProfile();
   const segments = useSegments();
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [seenOnboarding, setSeenOnboarding] = useState(false);
 
-  // Wait for Clerk to hydrate before deciding anything.
-  if (!isLoaded) {
+  useEffect(() => {
+    hasSeenOnboarding().then((seen) => {
+      setSeenOnboarding(seen);
+      setOnboardingChecked(true);
+    });
+  }, []);
+
+  if (!isLoaded || !onboardingChecked) {
     return <LoadingScreen />;
   }
 
   if (!isSignedIn) {
-    return <Redirect href="/(auth)/login" />;
+    return <Redirect href={seenOnboarding ? '/(auth)/login' : '/(auth)/onboarding'} />;
   }
 
-  // Wait for the profile list before routing.
   if (isLoading) {
     return <LoadingScreen />;
   }
 
-  // No profiles yet → force the user through profile creation, but don't loop
-  // when we're already on that screen.
   const onCreateProfile = segments[segments.length - 1] === 'create-profile';
   if (profiles.length === 0 && !onCreateProfile) {
     return <Redirect href="/(app)/create-profile" />;
@@ -35,6 +41,8 @@ export default function AppLayout() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="byok" />
       <Stack.Screen name="create-profile" />
+      <Stack.Screen name="upload" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="document/[id]" />
     </Stack>
   );
 }

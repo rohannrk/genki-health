@@ -35,6 +35,10 @@ export default function TabLayout() {
           title: 'Timeline',
           tabBarLabel: 'Timeline',
           tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>📅</Text>,
+          // Timeline has its own in-page patient selector — no header switcher here.
+          headerTitle: () => (
+            <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 18 }}>Timeline</Text>
+          ),
         }}
       />
       <Tabs.Screen
@@ -59,6 +63,10 @@ export default function TabLayout() {
           title: 'Settings',
           tabBarLabel: 'Settings',
           tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>⚙️</Text>,
+          // No profile switcher on Settings — show a plain title instead.
+          headerTitle: () => (
+            <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 18 }}>Settings</Text>
+          ),
         }}
       />
     </Tabs>

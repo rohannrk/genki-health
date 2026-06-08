@@ -6,15 +6,6 @@ import * as SecureStore from 'expo-secure-store';
 import { AuthProvider } from '../src/context/AuthContext';
 import { ProfileProvider } from '../src/context/ProfileContext';
 
-// NativeWindStyleSheet.setOutput is removed in NativeWind v4.
-// We declare and call a mock to satisfy the strict condition while avoiding compilation/runtime errors.
-const NativeWindStyleSheet = {
-  setOutput: (_output: any) => {
-    // no-op
-  },
-};
-NativeWindStyleSheet.setOutput({ default: 'native' });
-
 const tokenCache = {
   async getToken(key: string) {
     return SecureStore.getItemAsync(key);

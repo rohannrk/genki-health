@@ -19,6 +19,10 @@ export type PatientProfile = {
   avatarKey?: string | null;
   /** Optional fully-qualified URL (legacy / future presigned display URL). */
   avatarUrl?: string;
+  /** Whether this profile has its own AI (BYOK) key configured. */
+  hasApiKey?: boolean;
+  /** The AI provider for this profile's key, if set. */
+  aiProvider?: 'openai' | 'anthropic' | 'gemini' | null;
   createdAt?: string;
 };
 
@@ -40,7 +44,8 @@ export type MedicalDocument = {
   date: string;
   hospitalName?: string;
   doctorName?: string;
-  fileUrl: string;
+  /** Presigned download URL returned by the backend (expires in 1 hour) */
+  downloadUrl?: string;
   extractedText?: string;
   metadata: Record<string, string>;
   createdAt: string;

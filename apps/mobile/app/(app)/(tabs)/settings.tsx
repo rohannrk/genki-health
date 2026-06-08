@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { clearToken, clearApiKey } from '../../../src/lib/storage';
-import { useAuthContext } from '../../../src/context/AuthContext';
+import { useProfile } from '../../../src/context/ProfileContext';
 
 const PROVIDER_LABELS: Record<string, string> = {
   openai: 'OpenAI',
@@ -14,25 +14,49 @@ const PROVIDER_LABELS: Record<string, string> = {
 export default function SettingsTab() {
   const router = useRouter();
   const { signOut } = useAuth();
-  const { dbUser, syncUser } = useAuthContext();
+  const { profiles, activeProfile, setActiveProfile, deleteProfile } = useProfile();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Make sure the key status reflects the server even on a fresh app launch.
-  useEffect(() => {
-    if (!dbUser) syncUser();
-  }, [dbUser, syncUser]);
+  const openKeyEditor = (profileId: string) =>
+    router.push(`/(app)/byok?profileId=${profileId}` as Href);
 
-  const hasApiKey = !!dbUser?.hasApiKey;
-  const providerLabel = dbUser?.aiProvider ? PROVIDER_LABELS[dbUser.aiProvider] : null;
+  const handleDeleteProfile = (id: string, name: string) => {
+    if (profiles.length <= 1) {
+      Alert.alert(
+        'Can’t delete',
+        'You need at least one family member. Add another profile before deleting this one.'
+      );
+      return;
+    }
+    Alert.alert(
+      `Delete ${name}?`,
+      'This permanently removes this family member and all of their documents. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setDeletingId(id);
+            try {
+              await deleteProfile(id);
+            } catch (err: any) {
+              Alert.alert('Delete failed', err?.message ?? 'Please try again.');
+            } finally {
+              setDeletingId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleLogout = async () => {
     if (isSigningOut) return;
     setIsSigningOut(true);
     try {
-      // End the Clerk session — the (app) layout guard redirects to /(auth)/login
-      // automatically once isSignedIn flips to false.
       await signOut();
-      // Best-effort cleanup of any locally cached secrets.
       await clearToken();
       await clearApiKey();
     } catch (error) {
@@ -42,52 +66,122 @@ export default function SettingsTab() {
   };
 
   return (
-    <View className="flex-1 bg-slate-50 p-4 justify-between">
-      <View>
-        <Text className="text-2xl font-bold text-slate-800 mb-6">Settings</Text>
-        
+    <View className="flex-1 bg-slate-50">
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
         <View className="bg-white rounded-xl border border-slate-200 p-4 mb-4">
           <Text className="text-base font-semibold text-slate-800 mb-1">Medical Copilot v1.0.0</Text>
           <Text className="text-sm text-slate-500">Secure HIPAA-compliant clinical environment</Text>
         </View>
 
-        <TouchableOpacity
-          onPress={() => router.push('/(app)/byok' as Href)}
-          className="bg-white rounded-xl border border-slate-200 p-4 flex-row justify-between items-center mb-4"
-        >
-          <View className="flex-1 pr-3">
-            <Text className="text-sm font-semibold text-slate-700">API Credentials (BYOK)</Text>
-            {hasApiKey ? (
-              <View className="flex-row items-center mt-1">
-                <View className="w-2 h-2 rounded-full bg-emerald-500 mr-2" />
-                <Text className="text-xs text-emerald-600 font-medium">
-                  Key added{providerLabel ? ` · ${providerLabel}` : ''}
-                </Text>
-              </View>
-            ) : (
-              <View className="flex-row items-center mt-1">
-                <View className="w-2 h-2 rounded-full bg-slate-300 mr-2" />
-                <Text className="text-xs text-slate-400 font-medium">No key added</Text>
-              </View>
-            )}
-          </View>
-          <Text className="text-slate-400">➔</Text>
-        </TouchableOpacity>
-      </View>
+        {/* Family Members — switch active, manage each member's AI key, delete */}
+        <View className="flex-row justify-between items-center mb-2 px-1">
+          <Text className="text-sm font-semibold text-slate-700">Family Members</Text>
+          <TouchableOpacity onPress={() => router.push('/(app)/create-profile' as Href)}>
+            <Text className="text-emerald-600 font-semibold text-sm">+ Add</Text>
+          </TouchableOpacity>
+        </View>
 
-      <TouchableOpacity
-        onPress={handleLogout}
-        disabled={isSigningOut}
-        accessibilityRole="button"
-        accessibilityLabel="Log out"
-        className="w-full bg-red-50 border border-red-200 py-3.5 rounded-xl justify-center items-center mb-6"
-      >
-        {isSigningOut ? (
-          <ActivityIndicator color="#dc2626" />
+        {profiles.length === 0 ? (
+          <View className="bg-white rounded-xl border border-slate-200 p-4 mb-4">
+            <Text className="text-xs text-slate-400">No family members yet.</Text>
+          </View>
         ) : (
-          <Text className="text-red-600 font-bold text-base">Log Out</Text>
+          profiles.map((p) => {
+            const isActive = activeProfile?.id === p.id;
+            const providerLabel = p.aiProvider ? PROVIDER_LABELS[p.aiProvider] : null;
+            return (
+              <View
+                key={p.id}
+                className={`bg-white rounded-xl border p-4 mb-3 ${
+                  isActive ? 'border-emerald-400' : 'border-slate-200'
+                }`}
+              >
+                {/* Row: name + switch */}
+                <TouchableOpacity
+                  onPress={() => setActiveProfile(p)}
+                  activeOpacity={0.7}
+                  className="flex-row items-center justify-between"
+                >
+                  <View className="flex-1 pr-3">
+                    <View className="flex-row items-center">
+                      <Text className="text-base font-semibold text-slate-800">{p.name}</Text>
+                      {isActive && (
+                        <View className="ml-2 px-2 py-0.5 rounded-full bg-emerald-100">
+                          <Text className="text-[10px] font-bold text-emerald-700">ACTIVE</Text>
+                        </View>
+                      )}
+                    </View>
+                    {p.relation ? (
+                      <Text className="text-xs text-slate-400 capitalize mt-0.5">{p.relation}</Text>
+                    ) : null}
+                  </View>
+                  {!isActive && (
+                    <Text className="text-emerald-600 text-xs font-semibold">Switch</Text>
+                  )}
+                </TouchableOpacity>
+
+                {/* Key status */}
+                <View className="flex-row items-center mt-3">
+                  <View
+                    className={`w-2 h-2 rounded-full mr-2 ${
+                      p.hasApiKey ? 'bg-emerald-500' : 'bg-slate-300'
+                    }`}
+                  />
+                  <Text
+                    className={`text-xs font-medium ${
+                      p.hasApiKey ? 'text-emerald-600' : 'text-slate-400'
+                    }`}
+                  >
+                    {p.hasApiKey
+                      ? `AI key added${providerLabel ? ` · ${providerLabel}` : ''}`
+                      : 'No AI key'}
+                  </Text>
+                </View>
+
+                {/* Actions */}
+                <View className="flex-row gap-2 mt-3">
+                  <TouchableOpacity
+                    onPress={() => openKeyEditor(p.id)}
+                    className="flex-1 py-2 rounded-lg border border-slate-200 items-center"
+                  >
+                    <Text className="text-slate-700 text-xs font-semibold">
+                      {p.hasApiKey ? 'Update AI key' : 'Add AI key'}
+                    </Text>
+                  </TouchableOpacity>
+                  {deletingId === p.id ? (
+                    <View className="px-4 justify-center">
+                      <ActivityIndicator size="small" color="#dc2626" />
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => handleDeleteProfile(p.id, p.name)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Delete ${p.name}`}
+                      className="px-4 py-2 rounded-lg bg-red-50 border border-red-100 items-center"
+                    >
+                      <Text className="text-red-600 text-xs font-semibold">Delete</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            );
+          })
         )}
-      </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleLogout}
+          disabled={isSigningOut}
+          accessibilityRole="button"
+          accessibilityLabel="Log out"
+          className="w-full bg-red-50 border border-red-200 py-3.5 rounded-xl justify-center items-center mt-2"
+        >
+          {isSigningOut ? (
+            <ActivityIndicator color="#dc2626" />
+          ) : (
+            <Text className="text-red-600 font-bold text-base">Log Out</Text>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 }

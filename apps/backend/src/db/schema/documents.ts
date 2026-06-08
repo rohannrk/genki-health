@@ -1,5 +1,17 @@
-import { pgTable, uuid, varchar, text, date, jsonb, timestamp, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, date, jsonb, timestamp, index, customType } from 'drizzle-orm/pg-core';
 import { patientProfiles } from './profiles';
+
+const vector = customType<{ data: number[]; driverData: string }>({
+  dataType() {
+    return 'vector(768)';
+  },
+  toDriver(value: number[]): string {
+    return `[${value.join(',')}]`;
+  },
+  fromDriver(value: string): number[] {
+    return value.slice(1, -1).split(',').map(Number);
+  },
+});
 
 export const medicalDocuments = pgTable('medical_documents', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -13,6 +25,7 @@ export const medicalDocuments = pgTable('medical_documents', {
   doctorName: varchar('doctor_name', { length: 255 }),
   fileKey: text('file_key').notNull(),
   extractedText: text('extracted_text'),
+  embedding: vector('embedding'),
   metadata: jsonb('metadata').notNull().default({}),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => ({

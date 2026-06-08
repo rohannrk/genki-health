@@ -1,0 +1,76 @@
+# EAS Staging Deployment Workflow for Medical Copilot Monorepo
+# This workflow compiles, validates, and deploys the mobile application to Expo Application Services (EAS).
+# Triggered only on pushes to the main branch.
+
+name: EAS Build Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+# Set Turborepo cache directory to .turbo for GitHub Actions caching
+env:
+  TURBO_CACHE_DIR: .turbo
+
+# Cancel in-progress deployments on the same branch if a new commit is pushed to avoid wasting concurrent build slots
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-and-deploy:
+    name: Build, Validate, and Deploy to EAS
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the source code from the repository
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Fetch history for Turborepo's git comparison
+
+      # Step 2: Set up pnpm package manager in the runner
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.10.0
+
+      # Step 2 (continued): Setup Node.js (v20) and cache pnpm global stores
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      # Configure Turborepo caching to store build, test, and lint outputs
+      - name: Cache Turborepo Build Cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
+      # Step 3: Install project dependencies using the frozen lockfile
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Step 4: Run CI checks first to ensure code passes validation before building
+      # This runs linting, typechecking, and unit tests across all workspaces
+      - name: Run CI Validation Checks
+        run: |
+          pnpm turbo lint
+          pnpm turbo typecheck
+          pnpm turbo test
+
+      # Step 5: Install EAS CLI globally so we can execute Expo CLI commands
+      - name: Install EAS CLI
+        run: pnpm add -g eas-cli
+
+      # Step 5 (continued): Run EAS Build for staging environment for iOS and Android
+      # We change directory into apps/mobile where our Expo configurations reside
+      - name: Run EAS Build
+        run: cd apps/mobile && eas build --profile staging --platform all --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

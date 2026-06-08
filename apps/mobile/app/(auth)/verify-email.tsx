@@ -93,7 +93,8 @@ export default function VerifyEmailScreen() {
         const result = await signUp.attemptEmailAddressVerification({ code });
         await setActive({ session: result.createdSessionId });
         await syncUser();
-        router.replace('/(app)/byok' as Href);
+        // New users create a family member first; AI keys are set per-profile afterwards.
+        router.replace('/(app)/create-profile' as Href);
       } catch (err: any) {
         const msg =
           err?.errors?.[0]?.longMessage ??

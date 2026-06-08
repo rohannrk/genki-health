@@ -8,11 +8,13 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently --names 'DB,BACKEND,MOBILE' --prefix-colors 'blue,green,magenta' 'pnpm dev:db' 'pnpm dev:backend' 'pnpm dev:mobile'",
+    "dev": "concurrently --names 'DB,PKGS,BACKEND,MOBILE' --prefix-colors 'blue,yellow,green,magenta' 'pnpm dev:db' 'pnpm dev:packages' 'pnpm dev:backend' 'pnpm dev:mobile'",
     "dev:db": "docker compose -f apps/backend/docker-compose.yml up postgres",
+    "dev:packages": "concurrently --names 'types,utils,api' --prefix-colors 'cyan,blue,yellow' 'pnpm --filter @medcopilot/types dev' 'pnpm --filter @medcopilot/utils dev' 'pnpm --filter @medcopilot/api-client dev'",
     "dev:backend": "pnpm --filter @medcopilot/backend dev",
     "dev:mobile": "pnpm --filter @medcopilot/mobile start",
     "build": "turbo run build",
+    "build:packages": "pnpm --filter @medcopilot/types --filter @medcopilot/utils --filter @medcopilot/api-client run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck"
   },

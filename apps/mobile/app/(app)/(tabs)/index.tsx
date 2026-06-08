@@ -1,151 +1,193 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { ApiClient } from '@medcopilot/api-client';
-import { PatientProfile, MedicalDocument } from '@medcopilot/types';
-import { MedicalCard } from '@medcopilot/ui';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useAuth } from '@clerk/clerk-expo';
+import { documents as docsApi } from '@medcopilot/api-client';
+import { MedicalDocument } from '@medcopilot/types';
 import { formatDate } from '@medcopilot/utils';
-import Constants from 'expo-constants';
-import { getToken } from '../../../src/lib/storage';
+import { useProfile } from '../../../src/context/ProfileContext';
 
-const API_URL = Constants.expoConfig?.extra?.apiUrl || 'https://api.medcopilot.in';
+const TYPE_FILTERS = ['all', 'prescription', 'lab', 'imaging', 'invoice', 'other'] as const;
+type TypeFilter = typeof TYPE_FILTERS[number];
+
+const TYPE_LABELS: Record<string, string> = {
+  all: 'All',
+  prescription: '💊 Rx',
+  lab: '🔬 Lab',
+  imaging: '🩻 Imaging',
+  invoice: '🧾 Invoice',
+  other: '📄 Other',
+};
+
+const STATUS_DOT: Record<string, string> = {
+  ready: 'bg-emerald-500',
+  processing: 'bg-amber-400',
+  uploading: 'bg-blue-400',
+  error: 'bg-red-500',
+};
 
 export default function TimelineTab() {
-  const [api, setApi] = useState<ApiClient | null>(null);
-  const [profiles, setProfiles] = useState<PatientProfile[]>([]);
-  const [selectedProfile, setSelectedProfile] = useState<PatientProfile | null>(null);
+  const router = useRouter();
+  const { getToken } = useAuth();
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
+  const { profiles, activeProfile } = useProfile();
+
   const [documents, setDocuments] = useState<MedicalDocument[]>([]);
-  const [loadingProfiles, setLoadingProfiles] = useState<boolean>(true);
-  const [loadingDocuments, setLoadingDocuments] = useState<boolean>(false);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    async function initClientAndLoadProfiles() {
-      try {
-        const token = await getToken();
-        const client = new ApiClient(token, API_URL);
-        setApi(client);
-
-        const data = await client.profiles.list();
-        setProfiles(data);
-        if (data.length > 0) {
-          setSelectedProfile(data[0]);
-        }
-      } catch (error) {
-        console.error('Error loading patient profiles:', error);
-      } finally {
-        setLoadingProfiles(false);
-      }
+  const loadDocuments = useCallback(async (showLoader = true) => {
+    if (!activeProfile) return;
+    if (showLoader) setLoading(true);
+    try {
+      const token = await getTokenRef.current();
+      if (!token) return;
+      const res = await docsApi.list(
+        activeProfile.id,
+        token,
+        typeFilter !== 'all' ? { type: typeFilter } : {}
+      );
+      setDocuments(res.documents);
+    } catch (err) {
+      console.error('Error loading documents:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    initClientAndLoadProfiles();
-  }, []);
+  }, [activeProfile?.id, typeFilter]);
 
-  useEffect(() => {
-    if (!selectedProfile || !api) return;
-    const profileId = selectedProfile.id;
+  useEffect(() => { loadDocuments(); }, [loadDocuments]);
 
-    async function loadDocuments() {
-      setLoadingDocuments(true);
-      try {
-        const data = await api!.documents.list(profileId);
-        setDocuments(data);
-      } catch (error) {
-        console.error('Error loading medical documents:', error);
-      } finally {
-        setLoadingDocuments(false);
-      }
-    }
-    loadDocuments();
-  }, [selectedProfile, api]);
+  // Refresh when the tab regains focus (e.g. after upload or delete).
+  useFocusEffect(
+    useCallback(() => {
+      loadDocuments(false);
+    }, [loadDocuments])
+  );
 
-  if (loadingProfiles) {
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadDocuments(false);
+  };
+
+  if (!activeProfile && profiles.length === 0) {
     return (
-      <View className="flex-1 justify-center items-center bg-slate-50">
-        <ActivityIndicator size="large" color="#059669" />
-        <Text className="mt-4 text-slate-600 font-medium">Loading Patient Profiles...</Text>
+      <View className="flex-1 justify-center items-center bg-slate-50 p-8">
+        <Text className="text-slate-500 text-center">No patient profiles yet.</Text>
       </View>
     );
   }
 
   return (
     <View className="flex-1 bg-slate-50">
-      {/* Patient Profile Selector */}
-      <View className="bg-white border-b border-slate-200 p-4">
-        <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-          Select Patient Profile
-        </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-          {profiles.map((profile) => {
-            const isSelected = selectedProfile?.id === profile.id;
-            return (
-              <TouchableOpacity
-                key={profile.id}
-                onPress={() => setSelectedProfile(profile)}
-                className={`mr-3 px-4 py-2.5 rounded-full border ${
-                  isSelected
-                    ? 'bg-slate-900 border-slate-900'
-                    : 'bg-white border-slate-200'
-                }`}
-              >
-                <Text
-                  className={`text-sm font-semibold ${
-                    isSelected ? 'text-white' : 'text-slate-700'
-                  }`}
-                >
-                  {profile.name} ({profile.relation})
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* Patient Profile Details Summary */}
-      {selectedProfile && (
-        <View className="bg-white p-4 mb-4 border-b border-slate-200">
-          <Text className="text-xl font-bold text-slate-800">
-            {selectedProfile.name}
-          </Text>
-          <View className="flex-row mt-2 flex-wrap">
-            <Text className="text-sm text-slate-500 mr-4">
-              <Text className="font-semibold text-slate-700">Date of Birth: </Text>
-              {formatDate(selectedProfile.dob)}
-            </Text>
-            <Text className="text-sm text-slate-500 mr-4">
-              <Text className="font-semibold text-slate-700">Relationship: </Text>
-              {selectedProfile.relation}
-            </Text>
-          </View>
+      {/* Active patient label (switch profiles from Settings) */}
+      {activeProfile && (
+        <View className="bg-white border-b border-slate-200 px-4 pt-3 pb-2">
+          <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Patient</Text>
+          <Text className="text-base font-bold text-slate-800 mt-0.5">{activeProfile.name}</Text>
         </View>
       )}
 
-      {/* Medical Documents List */}
-      <ScrollView className="flex-1 px-4">
-        <Text className="text-sm font-semibold text-slate-500 mb-3 mt-1">
-          Clinical Documents Timeline
-        </Text>
+      {/* Type filter */}
+      <View className="bg-white border-b border-slate-100 px-4 py-2">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {TYPE_FILTERS.map(f => (
+            <TouchableOpacity
+              key={f}
+              onPress={() => setTypeFilter(f)}
+              className={`mr-2 px-3 py-1.5 rounded-full ${
+                typeFilter === f ? 'bg-emerald-600' : 'bg-slate-100'
+              }`}
+            >
+              <Text className={`text-xs font-semibold ${typeFilter === f ? 'text-white' : 'text-slate-600'}`}>
+                {TYPE_LABELS[f]}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
-        {loadingDocuments ? (
-          <View className="py-8 justify-center items-center">
-            <ActivityIndicator size="small" color="#059669" />
-            <Text className="mt-2 text-slate-500 text-sm">Retrieving records...</Text>
-          </View>
-        ) : documents.length === 0 ? (
-          <View className="bg-white rounded-xl border border-slate-200 p-8 justify-center items-center my-4">
-            <Text className="text-slate-400 text-sm font-medium">No medical documents found.</Text>
-          </View>
-        ) : (
-          documents.map((doc) => (
-            <MedicalCard
-              key={doc.id}
-              title={`${doc.type.toUpperCase()} - ${doc.hospitalName || 'Clinic'}`}
-              date={formatDate(doc.date)}
-              diagnosis={doc.metadata.diagnosis || 'Standard Review'}
-              treatment={doc.metadata.treatment || 'Check-up / Observation'}
-              provider={doc.doctorName || 'Attending Physician'}
-              notes={doc.extractedText}
-            />
-          ))
-        )}
-      </ScrollView>
+      {/* Document list */}
+      {loading ? (
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#059669" />
+        </View>
+      ) : (
+        <ScrollView
+          className="flex-1 px-4 pt-3"
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#059669" />}
+        >
+          {documents.length === 0 ? (
+            <View className="bg-white rounded-2xl border border-slate-200 p-8 items-center my-4">
+              <Text className="text-4xl mb-3">📋</Text>
+              <Text className="text-slate-500 text-sm font-medium text-center">
+                No documents yet. Tap + to upload your first record.
+              </Text>
+            </View>
+          ) : (
+            documents.map(doc => (
+              <TouchableOpacity
+                key={doc.id}
+                onPress={() => router.push(`/(app)/document/${doc.id}` as any)}
+                className="bg-white rounded-2xl border border-slate-200 p-4 mb-3"
+                activeOpacity={0.75}
+              >
+                <View className="flex-row items-start justify-between mb-2">
+                  <View className="flex-1 pr-3">
+                    <Text className="text-sm font-bold text-slate-800 capitalize">
+                      {doc.type.replace('_', ' ')}
+                    </Text>
+                    {doc.hospitalName && (
+                      <Text className="text-xs text-slate-500 mt-0.5">{doc.hospitalName}</Text>
+                    )}
+                    {doc.doctorName && (
+                      <Text className="text-xs text-slate-400">{doc.doctorName}</Text>
+                    )}
+                  </View>
+                  <View className="items-end">
+                    <View className={`w-2 h-2 rounded-full mb-1 ${STATUS_DOT[doc.status] ?? 'bg-slate-300'}`} />
+                    <Text className="text-xs text-slate-400">
+                      {doc.date ? formatDate(doc.date) : '—'}
+                    </Text>
+                  </View>
+                </View>
+                {doc.extractedText && (
+                  <Text className="text-xs text-slate-500 leading-relaxed" numberOfLines={2}>
+                    {doc.extractedText}
+                  </Text>
+                )}
+                {doc.status !== 'ready' && (
+                  <View className="flex-row items-center mt-2">
+                    <ActivityIndicator size="small" color="#d97706" />
+                    <Text className="text-xs text-amber-600 ml-1.5 font-medium">
+                      {doc.status === 'processing' ? 'Processing…' : 'Uploading…'}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))
+          )}
+          <View className="h-24" />
+        </ScrollView>
+      )}
+
+      {/* FAB */}
+      <TouchableOpacity
+        onPress={() => router.push('/(app)/upload' as any)}
+        className="absolute bottom-8 right-6 w-14 h-14 bg-emerald-600 rounded-full items-center justify-center"
+        style={{ elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 6 }}
+      >
+        <Text className="text-white text-2xl font-light">+</Text>
+      </TouchableOpacity>
     </View>
   );
 }

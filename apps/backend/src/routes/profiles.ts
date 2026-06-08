@@ -3,16 +3,24 @@ import { z } from 'zod';
 import { eq, and, asc } from 'drizzle-orm';
 import { db } from '../db';
 import { patientProfiles } from '../db/schema/profiles';
+import { medicalDocuments } from '../db/schema/documents';
 import { auditLogs } from '../db/schema/audit';
 import { requireAuth } from '../middleware/auth';
 import { getOrCreateUser } from '../middleware/getOrCreateUser';
 import { validate } from '../middleware/validate';
+import { deleteFile } from '../services/storage';
 
 const router = Router();
 
 // Apply auth protection and user synchronization to all profile endpoints
 router.use(requireAuth);
 router.use(getOrCreateUser);
+
+/** Strip the encrypted key from API responses; expose only key presence + provider. */
+function formatProfile(p: typeof patientProfiles.$inferSelect) {
+  const { encryptedApiKey, ...rest } = p;
+  return { ...rest, hasApiKey: !!encryptedApiKey };
+}
 
 // Validation Schemas
 const uuidParamSchema = {
@@ -57,7 +65,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
 
     res.status(200).json({
       status: 'success',
-      data: profilesList,
+      data: profilesList.map(formatProfile),
     });
   } catch (error) {
     next(error);
@@ -100,7 +108,7 @@ router.post(
 
       res.status(201).json({
         status: 'success',
-        data: newProfile,
+        data: formatProfile(newProfile),
       });
     } catch (error) {
       next(error);
@@ -162,7 +170,7 @@ router.patch(
 
       res.status(200).json({
         status: 'success',
-        data: updatedProfile,
+        data: formatProfile(updatedProfile),
       });
     } catch (error) {
       next(error);
@@ -203,7 +211,33 @@ router.delete(
         return;
       }
 
-      // 2. Perform deletion
+      // Prevent deleting the user's only remaining profile.
+      const owned = await db.query.patientProfiles.findMany({
+        where: eq(patientProfiles.ownerId, ownerId),
+        columns: { id: true },
+      });
+      if (owned.length <= 1) {
+        res.status(400).json({
+          status: 'error',
+          message: 'You must keep at least one family member.',
+        });
+        return;
+      }
+
+      // 2. Delete all of this profile's files from R2 (DB rows cascade on profile delete).
+      const docs = await db.query.medicalDocuments.findMany({
+        where: eq(medicalDocuments.profileId, id),
+        columns: { fileKey: true },
+      });
+      await Promise.all(
+        docs.map((d) =>
+          deleteFile(d.fileKey).catch((err) =>
+            console.error(`Warning: failed to delete R2 file ${d.fileKey}:`, err)
+          )
+        )
+      );
+
+      // 3. Perform deletion (cascades medical_documents rows via FK)
       await db
         .delete(patientProfiles)
         .where(eq(patientProfiles.id, id));

@@ -4,9 +4,10 @@ import React, {
   useReducer,
   useEffect,
   useCallback,
+  useRef,
   ReactNode,
 } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { useAuth } from '@clerk/clerk-expo';
 import { PatientProfile } from '@medcopilot/types';
 import { profiles as profilesApi } from '@medcopilot/api-client';
@@ -82,6 +83,7 @@ type ProfileContextType = State & {
   addProfile: (profile: PatientProfile) => void;
   setActiveProfile: (profile: PatientProfile | null) => void;
   updateProfile: (profile: PatientProfile) => void;
+  deleteProfile: (id: string) => Promise<void>;
 };
 
 const ProfileContext = createContext<ProfileContextType>({
@@ -90,25 +92,26 @@ const ProfileContext = createContext<ProfileContextType>({
   addProfile: () => {},
   setActiveProfile: () => {},
   updateProfile: () => {},
+  deleteProfile: async () => {},
 });
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const { isSignedIn, getToken } = useAuth();
   const [state, dispatch] = useReducer(reducer, initialState);
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
 
   const refreshProfiles = useCallback(async () => {
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       if (!token) {
         dispatch({ type: 'SET_PROFILES', payload: [] });
         return;
       }
       const list = await profilesApi.list(token);
-
       dispatch({ type: 'SET_PROFILES', payload: list });
 
-      // Restore the previously-active profile from storage, if it still exists.
-      const storedId = await AsyncStorage.getItem(ACTIVE_PROFILE_KEY);
+      const storedId = await SecureStore.getItemAsync(ACTIVE_PROFILE_KEY);
       if (storedId) {
         const stored = list.find(p => p.id === storedId);
         if (stored) dispatch({ type: 'SET_ACTIVE', payload: stored });
@@ -118,9 +121,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }, [getToken]);
+  }, []);
 
-  // Fetch profiles on mount / when auth state becomes available.
+  // Fetch profiles when sign-in state changes (stable deps — no loop).
   useEffect(() => {
     if (isSignedIn) {
       dispatch({ type: 'SET_LOADING', payload: true });
@@ -137,17 +140,25 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   const setActiveProfile = useCallback((profile: PatientProfile | null) => {
     dispatch({ type: 'SET_ACTIVE', payload: profile });
-    // Persist the selection (non-sensitive, so AsyncStorage is fine).
+    // Persist the selection across app restarts.
     if (profile) {
-      AsyncStorage.setItem(ACTIVE_PROFILE_KEY, profile.id).catch(() => {});
+      SecureStore.setItemAsync(ACTIVE_PROFILE_KEY, profile.id).catch(() => {});
     } else {
-      AsyncStorage.removeItem(ACTIVE_PROFILE_KEY).catch(() => {});
+      SecureStore.deleteItemAsync(ACTIVE_PROFILE_KEY).catch(() => {});
     }
   }, []);
 
   const updateProfile = useCallback((profile: PatientProfile) => {
     dispatch({ type: 'UPDATE_PROFILE', payload: profile });
   }, []);
+
+  const deleteProfile = useCallback(async (id: string) => {
+    const token = await getTokenRef.current();
+    if (!token) throw new Error('Not authenticated');
+    await profilesApi.delete(id, token);
+    // Re-fetch; SET_PROFILES re-selects a valid active profile if the deleted one was active.
+    await refreshProfiles();
+  }, [refreshProfiles]);
 
   return (
     <ProfileContext.Provider
@@ -157,6 +168,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         addProfile,
         setActiveProfile,
         updateProfile,
+        deleteProfile,
       }}
     >
       {children}

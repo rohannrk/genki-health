@@ -17,6 +17,18 @@ const envSchema = z.object({
   R2_PUBLIC_URL: z.string().url().optional(),
   PORT: z.coerce.number().int().positive().default(8000),
   NODE_ENV: z.enum(['development', 'staging', 'production']).default('development'),
+
+  // AI model names — override via env when providers rotate models, no code change needed.
+  OPENAI_MODEL: z.string().default('gpt-4o'),
+  ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-6'),
+  GEMINI_MODEL: z.string().default('gemini-3.1-flash-lite'),
+  // Gemini "thinking" budget for extraction calls. 0 = disabled (fastest/cheapest).
+  GEMINI_THINKING_BUDGET: z.coerce.number().int().min(0).default(0),
+  GEMINI_EMBED_MODEL: z.string().default('gemini-embedding-001'),
+  GEMINI_EMBED_DIMS: z.coerce.number().int().positive().default(768),
+
+  // Optional: Tavily web search for up-to-date clinical context in chat.
+  TAVILY_API_KEY: z.string().optional(),
 });
 
 const parseResult = envSchema.safeParse(process.env);

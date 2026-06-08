@@ -15,6 +15,7 @@ import {
   deleteFile,
   fileExists,
 } from '../services/storage';
+import { processDocument } from '../services/ingestion';
 
 const router = Router();
 
@@ -197,14 +198,17 @@ router.post(
         return;
       }
 
-      // 3. Update status: 'uploading' -> 'processing' -> stub 'ready' immediately
+      // 3. Set status to 'processing' and kick off ingestion pipeline
       const [updatedDoc] = await db
         .update(medicalDocuments)
-        .set({
-          status: 'ready', // stub ready immediately as requested
-        })
+        .set({ status: 'processing' })
         .where(eq(medicalDocuments.id, documentId))
         .returning();
+
+      // Fire-and-forget — OCR + classify + embed in background
+      processDocument(documentId).catch(err =>
+        console.error('[ingestion] background processing failed:', err)
+      );
 
       res.status(200).json({
         status: 'success',
@@ -212,6 +216,49 @@ router.post(
           documentId: updatedDoc.id,
           status: updatedDoc.status,
         },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * POST /documents/:documentId/retry
+ * Re-runs the ingestion pipeline for a document that failed (or got stuck) processing.
+ */
+router.post(
+  '/:documentId/retry',
+  validate(uuidParamSchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.dbUser!.id;
+      const { documentId } = req.params;
+
+      const doc = await verifyDocumentOwnership(documentId, userId);
+      if (!doc) {
+        res.status(403).json({ status: 'error', message: 'Forbidden: Document not found or access denied' });
+        return;
+      }
+
+      // Reset state and re-queue
+      const existingMeta = (doc.metadata as Record<string, unknown>) || {};
+      const [updatedDoc] = await db
+        .update(medicalDocuments)
+        .set({
+          status: 'processing',
+          metadata: { ...existingMeta, processingStage: 'queued', processingError: null },
+        })
+        .where(eq(medicalDocuments.id, documentId))
+        .returning();
+
+      processDocument(documentId).catch((err) =>
+        console.error('[ingestion] retry processing failed:', err)
+      );
+
+      res.status(200).json({
+        status: 'success',
+        data: { documentId: updatedDoc.id, status: updatedDoc.status },
       });
     } catch (error) {
       next(error);

@@ -8,6 +8,20 @@
       "when": 1780910410188,
       "tag": "0000_bouncy_leo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1749380000000,
+      "tag": "0001_add_pgvector",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780920000000,
+      "tag": "0002_profile_api_keys",
+      "breakpoints": true
     }
   ]
 }

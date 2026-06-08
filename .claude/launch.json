@@ -1,0 +1,30 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Backend API",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@medcopilot/backend", "dev"],
+      "port": 8000
+    },
+    {
+      "name": "Mobile (Expo)",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@medcopilot/mobile", "start", "--", "--port", "8082"],
+      "port": 8082,
+      "autoPort": false
+    },
+    {
+      "name": "Packages (watch)",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev:packages"],
+      "port": 0
+    },
+    {
+      "name": "Drizzle Studio",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@medcopilot/backend", "db:studio"],
+      "port": 4983
+    }
+  ]
+}

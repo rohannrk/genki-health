@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
+import axios from 'axios';
 import { db } from '../db';
 import { patientProfiles } from '../db/schema/profiles';
 import { medicalDocuments } from '../db/schema/documents';
@@ -9,182 +10,116 @@ import { requireAuth } from '../middleware/auth';
 import { getOrCreateUser } from '../middleware/getOrCreateUser';
 import { validate } from '../middleware/validate';
 import { decrypt } from '../lib/crypto';
+import { env } from '../env';
 import { generateAICompletion, AIProvider } from '../services/ai-adapter';
+import { embedText } from '../services/embedding';
 
 const router = Router();
 
-// Protect all AI endpoints
 router.use(requireAuth);
 router.use(getOrCreateUser);
 
+// ---------------------------------------------------------------------------
 // Validation Schemas
+// ---------------------------------------------------------------------------
+
 const chatSchema = {
   body: z.object({
-    profileId: z.string().uuid('Invalid profile ID format'),
-    messages: z.array(
-      z.object({
-        role: z.enum(['system', 'user', 'assistant']),
-        content: z.string().min(1, 'Message content is required'),
-      })
-    ).min(1, 'At least one message is required'),
+    profileId: z.string().uuid(),
+    messages: z.array(z.object({
+      role: z.enum(['user', 'assistant']),
+      content: z.string().min(1),
+    })).min(1),
   }),
 };
 
 const summariseSchema = {
   body: z.object({
-    documentId: z.string().uuid('Invalid document ID format'),
+    documentId: z.string().uuid(),
   }),
 };
 
 const searchSchema = {
   body: z.object({
-    profileId: z.string().uuid('Invalid profile ID format'),
-    query: z.string().min(1, 'Search query is required'),
+    profileId: z.string().uuid(),
+    query: z.string().min(1),
   }),
 };
 
-/**
- * POST /ai/chat
- * Chat with Medical Copilot regarding a patient profile.
- */
-router.post(
-  '/chat',
-  validate(chatSchema),
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const userId = req.dbUser!.id; // dbUser is guaranteed by getOrCreateUser middleware
-      const { profileId, messages } = req.body;
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-      // Validate patient profile ownership
-      const profile = await db.query.patientProfiles.findFirst({
-        where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, userId)),
-      });
-
-      if (!profile) {
-        res.status(404).json({
-          status: 'error',
-          message: 'Patient profile not found or access denied',
-        });
-        return;
-      }
-
-      // Fetch saved API key details from DB
-      const user = req.dbUser!;
-      const savedKeyData = user.encryptedApiKey;
-      const provider = user.aiProvider as AIProvider | null;
-
-      let aiResponseText = `[Mock Copilot] Hello! I am your Medical Copilot. This is a stub response. I have access to patient profile "${profile.name}".`;
-
-      if (savedKeyData && provider) {
-        try {
-          const apiKey = decrypt(savedKeyData);
-          const completion = await generateAICompletion({
-            apiKey,
-            provider,
-            prompt: messages[messages.length - 1].content,
-            messages,
-          });
-          aiResponseText = completion.text;
-        } catch (decryptErr) {
-          console.error('Failed to decrypt or use saved key:', decryptErr);
-        }
-      }
-
-      // Audit Log
-      db.insert(auditLogs)
-        .values({
-          userId,
-          action: 'AI_CHAT_INVOKED',
-          documentIds: [],
-          metadata: { profileId, query: messages[messages.length - 1].content.substring(0, 100) },
-          ipAddress: req.ip || null,
-        })
-        .catch((err) => console.error('Audit failed:', err));
-
-      res.status(200).json({
-        status: 'success',
-        data: {
-          response: aiResponseText,
-          timestamp: Date.now(),
-        },
-      });
-    } catch (error) {
-      next(error);
-    }
+function getDecryptedKey(
+  profile: { encryptedApiKey: string | null; aiProvider: string | null } | null | undefined
+): { apiKey: string; provider: AIProvider } | null {
+  if (!profile?.encryptedApiKey || !profile?.aiProvider) return null;
+  try {
+    return { apiKey: decrypt(profile.encryptedApiKey), provider: profile.aiProvider as AIProvider };
+  } catch {
+    return null;
   }
-);
+}
 
-/**
- * POST /ai/summarise
- * Summarise a medical document.
- */
-router.post(
-  '/summarise',
-  validate(summariseSchema),
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const userId = req.dbUser!.id;
-      const { documentId } = req.body;
+/** Fetch top-k similar docs from pgvector for a given profile */
+async function retrieveSimilarDocs(profileId: string, queryVec: number[], limit = 5) {
+  const vecLiteral = `[${queryVec.join(',')}]`;
+  const rows = await db.execute(
+    sql`SELECT id, type, status, date, hospital_name, doctor_name, extracted_text, metadata,
+               1 - (embedding <=> ${vecLiteral}::vector) AS score
+        FROM medical_documents
+        WHERE profile_id = ${profileId}::uuid
+          AND status = 'ready'
+          AND embedding IS NOT NULL
+        ORDER BY embedding <=> ${vecLiteral}::vector
+        LIMIT ${limit}`
+  );
+  return rows as unknown as Array<{
+    id: string;
+    type: string;
+    status: string;
+    date: string | null;
+    hospital_name: string | null;
+    doctor_name: string | null;
+    extracted_text: string | null;
+    metadata: Record<string, unknown>;
+    score: number;
+  }>;
+}
 
-      // Validate document existence
-      const doc = await db.query.medicalDocuments.findFirst({
-        where: eq(medicalDocuments.id, documentId),
-      });
+function excerpt(text: string | null, maxLen = 300): string {
+  if (!text) return '';
+  return text.length <= maxLen ? text : text.slice(0, maxLen) + '…';
+}
 
-      if (!doc) {
-        res.status(404).json({
-          status: 'error',
-          message: 'Medical document not found',
-        });
-        return;
-      }
-
-      // Validate patient profile ownership
-      const profile = await db.query.patientProfiles.findFirst({
-        where: and(eq(patientProfiles.id, doc.profileId), eq(patientProfiles.ownerId, userId)),
-      });
-
-      if (!profile) {
-        res.status(403).json({
-          status: 'error',
-          message: 'Access denied to this document',
-        });
-        return;
-      }
-
-      // Audit Log
-      db.insert(auditLogs)
-        .values({
-          userId,
-          action: 'AI_SUMMARISE_INVOKED',
-          documentIds: [documentId],
-          metadata: { type: doc.type, profileId: doc.profileId },
-          ipAddress: req.ip || null,
-        })
-        .catch((err) => console.error('Audit failed:', err));
-
-      res.status(200).json({
-        status: 'success',
-        data: {
-          documentId,
-          summary: `This is a stub summary for document of type "${doc.type}". Key findings: The document appears to contain clinical records or laboratory results. Standard parameters fall within expected physiological baselines. Please review original document for clinical decisions.`,
-          metadata: {
-            extractedEntities: ['Heart Rate', 'Blood Pressure'],
-            classification: doc.type,
-          },
-          timestamp: Date.now(),
-        },
-      });
-    } catch (error) {
-      next(error);
-    }
+/** Tavily web search — returns a short context snippet or null if not configured / fails. */
+async function webSearch(query: string): Promise<string | null> {
+  if (!env.TAVILY_API_KEY) return null;
+  try {
+    const { data } = await axios.post(
+      'https://api.tavily.com/search',
+      {
+        api_key: env.TAVILY_API_KEY,
+        query,
+        search_depth: 'basic',
+        max_results: 3,
+        include_answer: true,
+      },
+      { timeout: 5000 }
+    );
+    const answer: string = data.answer ?? '';
+    const snippets: string[] = (data.results ?? []).map((r: any) => `• ${r.title}: ${r.content?.slice(0, 200) ?? ''}`);
+    const combined = [answer, ...snippets].filter(Boolean).join('\n');
+    return combined || null;
+  } catch {
+    return null;
   }
-);
+}
 
-/**
- * POST /ai/search
- * Semantic searching across a patient profile's records.
- */
+// ---------------------------------------------------------------------------
+// POST /ai/search
+// ---------------------------------------------------------------------------
+
 router.post(
   '/search',
   validate(searchSchema),
@@ -193,50 +128,272 @@ router.post(
       const userId = req.dbUser!.id;
       const { profileId, query } = req.body;
 
-      // Validate profile ownership
       const profile = await db.query.patientProfiles.findFirst({
         where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, userId)),
       });
-
       if (!profile) {
-        res.status(404).json({
-          status: 'error',
-          message: 'Patient profile not found or access denied',
-        });
+        res.status(404).json({ status: 'error', message: 'Profile not found or access denied' });
         return;
       }
 
-      // Audit Log
-      db.insert(auditLogs)
-        .values({
-          userId,
-          action: 'AI_SEARCH_INVOKED',
-          documentIds: [],
-          metadata: { profileId, query },
-          ipAddress: req.ip || null,
-        })
-        .catch((err) => console.error('Audit failed:', err));
+      const creds = getDecryptedKey(profile);
+
+      db.insert(auditLogs).values({
+        userId, action: 'AI_SEARCH_INVOKED',
+        documentIds: [],
+        metadata: { profileId, query: query.slice(0, 100) },
+        ipAddress: req.ip || null,
+      }).catch(() => {});
+
+      // Fall back to keyword search if no BYOK key or embedding fails
+      let results: Array<{ documentId: string; type: string; date: string | null; hospitalName: string | null; excerpt: string; score: number }> = [];
+
+      if (creds) {
+        const geminiKey = creds.provider === 'gemini' ? creds.apiKey : null;
+        const queryVec = await embedText(query, geminiKey);
+
+        if (queryVec) {
+          const rows = await retrieveSimilarDocs(profileId, queryVec, 10);
+          results = rows.map(r => ({
+            documentId: r.id,
+            type: r.type,
+            date: r.date,
+            hospitalName: r.hospital_name,
+            excerpt: excerpt(r.extracted_text),
+            score: Number(r.score),
+          }));
+        }
+      }
+
+      // Keyword fallback when no embeddings available
+      if (results.length === 0) {
+        const docs = await db.query.medicalDocuments.findMany({
+          where: and(eq(medicalDocuments.profileId, profileId), eq(medicalDocuments.status, 'ready')),
+          limit: 20,
+        });
+        const lower = query.toLowerCase();
+        results = docs
+          .filter(d => d.extractedText?.toLowerCase().includes(lower))
+          .slice(0, 10)
+          .map(d => ({
+            documentId: d.id,
+            type: d.type,
+            date: d.date,
+            hospitalName: d.hospitalName,
+            excerpt: excerpt(d.extractedText),
+            score: 1,
+          }));
+      }
+
+      res.status(200).json({ status: 'success', data: { query, results } });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// POST /ai/summarise
+// ---------------------------------------------------------------------------
+
+router.post(
+  '/summarise',
+  validate(summariseSchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.dbUser!.id;
+      const { documentId } = req.body;
+
+      const doc = await db.query.medicalDocuments.findFirst({
+        where: eq(medicalDocuments.id, documentId),
+      });
+      if (!doc) {
+        res.status(404).json({ status: 'error', message: 'Document not found' });
+        return;
+      }
+
+      const profile = await db.query.patientProfiles.findFirst({
+        where: and(eq(patientProfiles.id, doc.profileId), eq(patientProfiles.ownerId, userId)),
+      });
+      if (!profile) {
+        res.status(403).json({ status: 'error', message: 'Access denied' });
+        return;
+      }
+
+      db.insert(auditLogs).values({
+        userId, action: 'AI_SUMMARISE_INVOKED',
+        documentIds: [documentId],
+        metadata: { type: doc.type, profileId: doc.profileId },
+        ipAddress: req.ip || null,
+      }).catch(() => {});
+
+      const creds = getDecryptedKey(profile);
+      let summary = '';
+
+      if (creds && doc.extractedText) {
+        const meta = (doc.metadata ?? {}) as Record<string, string>;
+        const result = await generateAICompletion({
+          apiKey: creds.apiKey,
+          provider: creds.provider,
+          prompt: `Summarise this medical document in 3-5 concise bullet points.
+Cover: diagnosis or findings, medications/treatments prescribed, key test values with their reference ranges, and any follow-up actions.
+If any values are abnormal or out of range, flag them clearly.
+Be factual and clinical. Use plain language.
+
+Document type: ${doc.type}
+Date: ${doc.date ?? 'unknown'}
+Hospital: ${doc.hospitalName ?? 'unknown'}
+Doctor: ${doc.doctorName ?? 'unknown'}
+${meta.diagnosis ? `Diagnosis: ${meta.diagnosis}` : ''}
+${meta.treatment ? `Treatment: ${meta.treatment}` : ''}
+
+Document text:
+${doc.extractedText.slice(0, 8000)}`,
+        });
+        summary = result.text.trim();
+      } else if (!doc.extractedText) {
+        summary = 'Document has not been processed yet. Please wait for text extraction to complete.';
+      } else {
+        summary = 'No AI provider configured. Please add an API key in Settings → API Credentials.';
+      }
 
       res.status(200).json({
         status: 'success',
         data: {
-          query,
-          results: [
-            {
-              documentId: 'stub-doc-id-1',
-              type: 'report',
-              matchText: 'CBC count shows stable platelet count and Hb levels...',
-              score: 0.92,
-            },
-            {
-              documentId: 'stub-doc-id-2',
-              type: 'prescription',
-              matchText: 'Continue taking daily multi-vitamin tablet...',
-              score: 0.81,
-            },
-          ],
-          timestamp: Date.now(),
+          summary,
+          sourceDocument: {
+            id: doc.id,
+            type: doc.type,
+            date: doc.date,
+            hospitalName: doc.hospitalName,
+          },
         },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// POST /ai/chat
+// ---------------------------------------------------------------------------
+
+router.post(
+  '/chat',
+  validate(chatSchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.dbUser!.id;
+      const { profileId, messages } = req.body;
+
+      const profile = await db.query.patientProfiles.findFirst({
+        where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, userId)),
+      });
+      if (!profile) {
+        res.status(404).json({ status: 'error', message: 'Profile not found or access denied' });
+        return;
+      }
+
+      const creds = getDecryptedKey(profile);
+      const lastUserMessage: string = messages.filter((m: any) => m.role === 'user').at(-1)?.content ?? '';
+
+      db.insert(auditLogs).values({
+        userId, action: 'AI_CHAT_INVOKED',
+        documentIds: [],
+        metadata: { profileId, query: lastUserMessage.slice(0, 100) },
+        ipAddress: req.ip || null,
+      }).catch(() => {});
+
+      if (!creds) {
+        res.status(200).json({
+          status: 'success',
+          data: {
+            response: 'No AI provider configured. Please add an API key in Settings → API Credentials.',
+            sources: [],
+          },
+        });
+        return;
+      }
+
+      // RAG: embed query → retrieve top-5 docs + optional web search (run in parallel)
+      const geminiKey = creds.provider === 'gemini' ? creds.apiKey : null;
+      const [queryVec, webContext] = await Promise.all([
+        embedText(lastUserMessage, geminiKey),
+        webSearch(lastUserMessage),
+      ]);
+      let contextDocs: Awaited<ReturnType<typeof retrieveSimilarDocs>> = [];
+
+      if (queryVec) {
+        contextDocs = await retrieveSimilarDocs(profileId, queryVec, 6);
+      } else {
+        // Fallback: use most recent 6 ready docs
+        const recent = await db.query.medicalDocuments.findMany({
+          where: and(eq(medicalDocuments.profileId, profileId), eq(medicalDocuments.status, 'ready')),
+          limit: 6,
+        });
+        contextDocs = recent.map(d => ({
+          id: d.id, type: d.type, status: d.status,
+          date: d.date, hospital_name: d.hospitalName,
+          doctor_name: d.doctorName, extracted_text: d.extractedText,
+          metadata: d.metadata as Record<string, unknown>, score: 1,
+        }));
+      }
+
+      // Build system prompt with full context
+      const recordsBlock = contextDocs
+        .filter(d => d.extracted_text)
+        .map(d => {
+          const meta = (d.metadata ?? {}) as Record<string, string>;
+          const extras = [
+            meta.diagnosis ? `Diagnosis: ${meta.diagnosis}` : '',
+            meta.treatment ? `Treatment: ${meta.treatment}` : '',
+            d.doctor_name ? `Doctor: ${d.doctor_name}` : '',
+          ].filter(Boolean).join(' | ');
+          return `[Doc: ${d.id}]\nType: ${d.type} | Date: ${d.date ?? 'unknown'} | Hospital: ${d.hospital_name ?? 'unknown'}${extras ? '\n' + extras : ''}\n\nFull text:\n${d.extracted_text!.slice(0, 3000)}`;
+        })
+        .join('\n\n---\n\n');
+
+      const webBlock = webContext
+        ? `\n\nWEB SEARCH (up-to-date clinical reference):\n${webContext}`
+        : '';
+
+      const systemPrompt = `You are Medical Copilot, a knowledgeable clinical AI assistant for ${profile.name}'s health records.
+
+Your role:
+- Answer questions about the patient's records accurately, citing source documents as [Doc: <id>] inline.
+- Supplement with general medical knowledge when helpful (e.g. explaining what a test result means, drug interactions, normal ranges).
+- If a question cannot be answered from the records, say so and offer what medical context you can.
+- Be concise, plain-language, and factual. Never guess or fabricate record details.
+- If a value looks abnormal, note it clearly.
+
+PATIENT RECORDS (most relevant to your question):
+${recordsBlock || 'No processed records available yet. Upload documents and wait for extraction to complete.'}${webBlock}`;
+
+      const result = await generateAICompletion({
+        apiKey: creds.apiKey,
+        provider: creds.provider,
+        prompt: lastUserMessage,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages,
+        ],
+      });
+
+      // Extract cited doc IDs from response
+      const citedIds = [...result.text.matchAll(/\[Doc:\s*([a-f0-9-]{36})\]/g)].map(m => m[1]);
+      const sources = contextDocs
+        .filter(d => citedIds.includes(d.id))
+        .map(d => ({
+          documentId: d.id,
+          type: d.type,
+          date: d.date,
+          excerpt: excerpt(d.extracted_text),
+        }));
+
+      res.status(200).json({
+        status: 'success',
+        data: { response: result.text, sources },
       });
     } catch (error) {
       next(error);

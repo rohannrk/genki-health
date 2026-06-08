@@ -9,16 +9,12 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { useRouter, type Href } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import * as WebBrowser from 'expo-web-browser';
-import { useAuthContext } from '../../src/context/AuthContext';
+import { useProfile } from '../../src/context/ProfileContext';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://api.medcopilot.in';
-
-// create-profile is a separate (app)-group screen built elsewhere; cast until
-// its typed route is generated.
-const CREATE_PROFILE_ROUTE = '/(app)/create-profile' as Href;
 
 type ProviderId = 'openai' | 'anthropic' | 'gemini';
 
@@ -51,7 +47,7 @@ const PROVIDERS: Provider[] = [
   {
     id: 'gemini',
     name: 'Gemini',
-    model: 'Gemini 1.5 Pro',
+    model: 'Gemini 3.5 Flash',
     icon: '✨',
     placeholder: 'AIza...',
     keyUrl: 'https://aistudio.google.com/apikey',
@@ -61,9 +57,12 @@ const PROVIDERS: Provider[] = [
 export default function ByokScreen() {
   const router = useRouter();
   const { getToken } = useAuth();
-  const { updateDbUser } = useAuthContext();
+  const { profiles, activeProfile, refreshProfiles } = useProfile();
+  const params = useLocalSearchParams<{ profileId?: string }>();
+  const targetProfile =
+    profiles.find(p => p.id === params.profileId) ?? activeProfile ?? null;
 
-  const [selectedId, setSelectedId] = useState<ProviderId>('openai');
+  const [selectedId, setSelectedId] = useState<ProviderId>('gemini');
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -106,17 +105,21 @@ export default function ByokScreen() {
         return;
       }
 
+      if (!targetProfile) {
+        setError('No family member selected. Open this from a profile in Settings.');
+        return;
+      }
+
       const headers = {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       };
-      const body = JSON.stringify({ provider: selectedId, apiKey: trimmedKey });
 
       // 1. Validate the key actually works with the provider.
       const validateRes = await fetch(`${API_BASE}/api/v1/keys/validate`, {
         method: 'POST',
         headers,
-        body,
+        body: JSON.stringify({ provider: selectedId, apiKey: trimmedKey }),
       });
       if (!validateRes.ok) {
         const data = await validateRes.json().catch(() => ({}));
@@ -124,11 +127,11 @@ export default function ByokScreen() {
         return;
       }
 
-      // 2. Encrypt + store the key server-side.
+      // 2. Encrypt + store the key server-side for this profile.
       const saveRes = await fetch(`${API_BASE}/api/v1/keys/save`, {
         method: 'POST',
         headers,
-        body,
+        body: JSON.stringify({ profileId: targetProfile.id, provider: selectedId, apiKey: trimmedKey }),
       });
       if (!saveRes.ok) {
         const data = await saveRes.json().catch(() => ({}));
@@ -136,13 +139,11 @@ export default function ByokScreen() {
         return;
       }
 
-      // 3. Reflect the new state locally, then wipe the key from memory.
-      const last4 = trimmedKey.slice(-4);
-      setSavedLast4(last4);
-      updateDbUser({ hasApiKey: true, aiProvider: selectedId });
+      // 3. Reflect the new state, wipe the key from memory, and return.
+      setSavedLast4(trimmedKey.slice(-4));
       setApiKey('');
-
-      router.replace(CREATE_PROFILE_ROUTE);
+      await refreshProfiles();
+      router.back();
     } catch {
       setError('Something went wrong. Please check your connection and try again.');
     } finally {
@@ -152,7 +153,7 @@ export default function ByokScreen() {
 
   const handleSkip = () => {
     if (isSaving) return;
-    router.replace(CREATE_PROFILE_ROUTE);
+    router.back();
   };
 
   return (
@@ -169,10 +170,12 @@ export default function ByokScreen() {
           {/* Header */}
           <View className="mb-8">
             <Text className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              Connect your AI
+              Connect AI
             </Text>
             <Text className="text-sm text-slate-500 mt-2 leading-5">
-              Your records are processed using your own API key. We never see your data.
+              {targetProfile
+                ? `Set the AI key for ${targetProfile.name}. Their records are processed using this key — we never see your data.`
+                : 'Open this from a family member in Settings to set their AI key.'}
             </Text>
           </View>
 
@@ -283,16 +286,16 @@ export default function ByokScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Skip */}
+          {/* Cancel */}
           <TouchableOpacity
             onPress={handleSkip}
             disabled={isSaving}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityRole="button"
-            accessibilityLabel="Skip for now"
+            accessibilityLabel="Cancel"
             className="items-center mt-4"
           >
-            <Text className="text-slate-500 text-sm font-medium">Skip for now</Text>
+            <Text className="text-slate-500 text-sm font-medium">Cancel</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
