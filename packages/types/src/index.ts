@@ -45,3 +45,48 @@ export type MedicalDocument = {
   metadata: Record<string, string>;
   createdAt: string;
 };
+
+// ---------------------------------------------------------------------------
+// Phase 5 — Sharing, Export & Compliance
+// ---------------------------------------------------------------------------
+
+export type AuditLog = {
+  id: string;
+  action: string;
+  documentIds: string[];
+  metadata: Record<string, unknown>;
+  ipAddress: string | null;
+  createdAt: string;
+};
+
+export type ConsentSettings = {
+  aiOptIn: boolean;
+  consentUpdatedAt: string | null;
+};
+
+export type Share = {
+  id: string;
+  profileId: string;
+  documentIds: string[];
+  token: string;
+  /** Fully-qualified redemption URL (`/api/v1/share/:token`). */
+  url: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  accessCount: number;
+  createdAt: string;
+};
+
+/** View-only payload returned when redeeming a share token (unauthenticated). */
+export type SharedView = {
+  profileName: string;
+  expiresAt: string;
+  documents: Array<{
+    id: string;
+    type: string;
+    date: string | null;
+    hospitalName?: string | null;
+    doctorName?: string | null;
+    downloadUrl: string;
+  }>;
+};

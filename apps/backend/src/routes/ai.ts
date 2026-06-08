@@ -4,12 +4,12 @@ import { eq, and } from 'drizzle-orm';
 import { db } from '../db';
 import { patientProfiles } from '../db/schema/profiles';
 import { medicalDocuments } from '../db/schema/documents';
-import { auditLogs } from '../db/schema/audit';
 import { requireAuth } from '../middleware/auth';
 import { getOrCreateUser } from '../middleware/getOrCreateUser';
 import { validate } from '../middleware/validate';
 import { decrypt } from '../lib/crypto';
 import { generateAICompletion, AIProvider } from '../services/ai-adapter';
+import { logAudit } from '../services/audit';
 
 const router = Router();
 
@@ -91,15 +91,12 @@ router.post(
       }
 
       // Audit Log
-      db.insert(auditLogs)
-        .values({
-          userId,
-          action: 'AI_CHAT_INVOKED',
-          documentIds: [],
-          metadata: { profileId, query: messages[messages.length - 1].content.substring(0, 100) },
-          ipAddress: req.ip || null,
-        })
-        .catch((err) => console.error('Audit failed:', err));
+      logAudit({
+        userId,
+        action: 'AI_CHAT_INVOKED',
+        metadata: { profileId, query: messages[messages.length - 1].content.substring(0, 100) },
+        req,
+      });
 
       res.status(200).json({
         status: 'success',
@@ -153,15 +150,13 @@ router.post(
       }
 
       // Audit Log
-      db.insert(auditLogs)
-        .values({
-          userId,
-          action: 'AI_SUMMARISE_INVOKED',
-          documentIds: [documentId],
-          metadata: { type: doc.type, profileId: doc.profileId },
-          ipAddress: req.ip || null,
-        })
-        .catch((err) => console.error('Audit failed:', err));
+      logAudit({
+        userId,
+        action: 'AI_SUMMARISE_INVOKED',
+        documentIds: [documentId],
+        metadata: { type: doc.type, profileId: doc.profileId },
+        req,
+      });
 
       res.status(200).json({
         status: 'success',
@@ -207,15 +202,12 @@ router.post(
       }
 
       // Audit Log
-      db.insert(auditLogs)
-        .values({
-          userId,
-          action: 'AI_SEARCH_INVOKED',
-          documentIds: [],
-          metadata: { profileId, query },
-          ipAddress: req.ip || null,
-        })
-        .catch((err) => console.error('Audit failed:', err));
+      logAudit({
+        userId,
+        action: 'AI_SEARCH_INVOKED',
+        metadata: { profileId, query },
+        req,
+      });
 
       res.status(200).json({
         status: 'success',

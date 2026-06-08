@@ -5,6 +5,13 @@ import { get, post, getBaseUrl } from './http';
 export { get, post, patch, del, getBaseUrl } from './http';
 export { profiles } from './profiles';
 export type { CreateProfileInput } from './profiles';
+export { audit } from './audit';
+export type { AuditListParams, AuditListResult } from './audit';
+export { consent } from './consent';
+export { shares } from './shares';
+export type { CreateShareInput } from './shares';
+export { documents } from './documents';
+export type { DocumentItem, ExportPdfInput } from './documents';
 
 // ---------------------------------------------------------------------------
 // Auth module

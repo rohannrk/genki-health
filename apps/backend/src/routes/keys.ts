@@ -6,7 +6,7 @@ import { requireAuth } from '../middleware/auth';
 import { getOrCreateUser } from '../middleware/getOrCreateUser';
 import { validate } from '../middleware/validate';
 import { encrypt } from '../lib/crypto';
-import { auditLogs } from '../db/schema/audit';
+import { logAudit } from '../services/audit';
 import { users } from '../db/schema/users';
 import { db } from '../db';
 
@@ -158,15 +158,7 @@ router.post(
         .where(eq(users.id, userId));
 
       // Audit Log
-      db.insert(auditLogs)
-        .values({
-          userId,
-          action: 'AI_KEY_SAVED',
-          documentIds: [],
-          metadata: { provider },
-          ipAddress: req.ip || null,
-        })
-        .catch((err) => console.error('Audit failed:', err));
+      logAudit({ userId, action: 'AI_KEY_SAVED', metadata: { provider }, req });
 
       res.status(200).json({
         message: 'Key saved',
@@ -200,15 +192,7 @@ router.delete(
         .where(eq(users.id, userId));
 
       // Audit Log
-      db.insert(auditLogs)
-        .values({
-          userId,
-          action: 'AI_KEY_DELETED',
-          documentIds: [],
-          metadata: {},
-          ipAddress: req.ip || null,
-        })
-        .catch((err) => console.error('Audit failed:', err));
+      logAudit({ userId, action: 'AI_KEY_DELETED', req });
 
       res.status(204).send();
     } catch (error) {

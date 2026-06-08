@@ -8,6 +8,13 @@
       "when": 1780910410188,
       "tag": "0000_bouncy_leo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780948006606,
+      "tag": "0001_funny_chameleon",
+      "breakpoints": true
     }
   ]
 }
