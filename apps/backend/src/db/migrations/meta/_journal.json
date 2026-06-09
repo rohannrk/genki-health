@@ -43,6 +43,13 @@
       "when": 1749470000000,
       "tag": "0005_chat_history",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780999561421,
+      "tag": "0006_neat_loki",
+      "breakpoints": true
     }
   ]
 }

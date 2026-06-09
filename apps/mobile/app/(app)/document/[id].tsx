@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,9 +12,11 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
-import { documents as docsApi } from '@medcopilot/api-client';
-import { MedicalDocument } from '@medcopilot/types';
+import { documents as docsApi, biomarkers as biomarkersApi } from '@medcopilot/api-client';
+import { MedicalDocument, BiomarkerReading, UpdateBiomarkerReadingInput } from '@medcopilot/types';
 import { formatDate } from '@medcopilot/utils';
+import { useProfile } from '../../../src/context/ProfileContext';
+import BiomarkersReviewCard from '../../../src/features/biomarker/components/BiomarkersReviewCard';
 
 const STATUS_COLORS: Record<string, string> = {
   ready: 'bg-emerald-100 text-emerald-700',
@@ -37,7 +39,7 @@ const STAGES: { key: string; label: string }[] = [
   { key: 'analyzing', label: 'Reading & extracting' },
   { key: 'embedding', label: 'Indexing for search' },
 ];
-const STAGE_ORDER = ['queued', ...STAGES.map(s => s.key), 'done'];
+const STAGE_ORDER = ['queued', ...STAGES.map((s) => s.key), 'done'];
 const EST_TOTAL_SECONDS = 20;
 
 export default function DocumentDetailScreen() {
@@ -47,7 +49,9 @@ export default function DocumentDetailScreen() {
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
 
-  const [doc, setDoc] = useState<MedicalDocument & { downloadUrl?: string } | null>(null);
+  const { activeProfile } = useProfile();
+
+  const [doc, setDoc] = useState<(MedicalDocument & { downloadUrl?: string }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -55,6 +59,26 @@ export default function DocumentDetailScreen() {
   const [savingTitle, setSavingTitle] = useState(false);
   const [elapsed, setElapsed] = useState(0);
 
+  // Biomarker review state
+  const [readings, setReadings] = useState<BiomarkerReading[]>([]);
+  const [showRawText, setShowRawText] = useState(false);
+
+  // ── Fetch biomarkers for a ready document ──────────────────────────────────
+  const fetchReadings = useCallback(
+    async (documentId: string, profileId: string) => {
+      try {
+        const token = await getTokenRef.current();
+        if (!token) return;
+        const data = await biomarkersApi.listByDocument(documentId, profileId, token);
+        setReadings(data);
+      } catch {
+        // Non-fatal — document is still usable without biomarkers
+      }
+    },
+    []
+  );
+
+  // ── Poll document until ready ──────────────────────────────────────────────
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
 
@@ -67,6 +91,8 @@ export default function DocumentDetailScreen() {
 
         if (data.status === 'processing' || data.status === 'uploading') {
           timer = setTimeout(fetchDoc, 3000);
+        } else if (data.status === 'ready' && activeProfile) {
+          fetchReadings(id, activeProfile.id);
         }
       } catch (err) {
         console.error('Failed to load document:', err);
@@ -77,9 +103,9 @@ export default function DocumentDetailScreen() {
 
     fetchDoc();
     return () => clearTimeout(timer);
-  }, [id]);
+  }, [id, activeProfile, fetchReadings]);
 
-  // Elapsed timer while the document is being processed.
+  // ── Elapsed timer while processing ────────────────────────────────────────
   const isProcessing = doc?.status === 'processing' || doc?.status === 'uploading';
   useEffect(() => {
     if (!isProcessing) {
@@ -87,9 +113,14 @@ export default function DocumentDetailScreen() {
       return;
     }
     const started = Date.now();
-    const interval = setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
+    const interval = setInterval(
+      () => setElapsed(Math.floor((Date.now() - started) / 1000)),
+      1000
+    );
     return () => clearInterval(interval);
   }, [isProcessing]);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleRetry = async () => {
     if (!id) return;
@@ -98,8 +129,9 @@ export default function DocumentDetailScreen() {
       const token = await getTokenRef.current();
       if (!token) return;
       await docsApi.retry(id, token);
-      setDoc(prev => (prev ? { ...prev, status: 'processing' as const } : prev));
-      // Resume polling
+      setDoc((prev) => (prev ? { ...prev, status: 'processing' as const } : prev));
+      setReadings([]); // clear stale readings — will refresh when done
+
       const poll = async () => {
         const t = await getTokenRef.current();
         if (!t) return;
@@ -107,6 +139,8 @@ export default function DocumentDetailScreen() {
         setDoc(data);
         if (data.status === 'processing' || data.status === 'uploading') {
           setTimeout(poll, 3000);
+        } else if (data.status === 'ready' && activeProfile) {
+          fetchReadings(id, activeProfile.id);
         }
       };
       setTimeout(poll, 3000);
@@ -138,7 +172,7 @@ export default function DocumentDetailScreen() {
       if (!token) return;
       const next = titleDraft.trim();
       const updated = await docsApi.rename(id, next || null, token);
-      setDoc(prev => (prev ? { ...prev, title: updated.title } : prev));
+      setDoc((prev) => (prev ? { ...prev, title: updated.title } : prev));
       setRenaming(false);
     } catch (err: any) {
       Alert.alert('Rename failed', err?.message ?? 'Please try again.');
@@ -173,14 +207,39 @@ export default function DocumentDetailScreen() {
   };
 
   const handleViewOriginal = () => {
-    const url = doc.downloadUrl;
+    const url = doc?.downloadUrl;
     if (url) Linking.openURL(url);
   };
+
+  // Save corrected readings: PATCH each changed row, then refresh local state.
+  const handleSaveReadings = useCallback(
+    async (
+      updates: Array<{ id: string; value: number; refLow: number | null; refHigh: number | null }>
+    ) => {
+      const token = await getTokenRef.current();
+      if (!token) throw new Error('Not authenticated');
+
+      const saved = await Promise.all(
+        updates.map((u) =>
+          biomarkersApi.update(u.id, u as UpdateBiomarkerReadingInput, token)
+        )
+      );
+
+      // Merge updated rows back into local state.
+      setReadings((prev) => {
+        const map = new Map(saved.map((r) => [r.id, r]));
+        return prev.map((r) => map.get(r.id) ?? r);
+      });
+    },
+    []
+  );
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center bg-slate-50">
-        <ActivityIndicator size="large" color="#059669" />
+        <ActivityIndicator size="large" color="#14532d" />
       </View>
     );
   }
@@ -198,10 +257,13 @@ export default function DocumentDetailScreen() {
 
   return (
     <View className="flex-1 bg-slate-50">
+      {/* ── Header ── */}
       <View className="bg-white border-b border-slate-200 px-4 pt-14 pb-4">
         <TouchableOpacity onPress={() => router.back()} className="mb-3 flex-row items-center">
-          <Ionicons name="arrow-back" size={18} color="#059669" />
-          <Text className="text-emerald-600 font-semibold ml-1">Back</Text>
+          <Ionicons name="arrow-back" size={18} color="#14532d" />
+          <Text style={{ color: '#14532d' }} className="font-semibold ml-1">
+            Back
+          </Text>
         </TouchableOpacity>
         <View className="flex-row items-start justify-between">
           <View className="flex-1 pr-3">
@@ -216,14 +278,20 @@ export default function DocumentDetailScreen() {
                   placeholderTextColor="#94a3b8"
                   returnKeyType="done"
                   onSubmitEditing={handleSaveTitle}
-                  className="text-xl font-bold text-slate-900 border-b border-emerald-400 pb-1"
+                  className="text-xl font-bold text-slate-900 border-b border-primary-600 pb-1"
                 />
                 <View className="flex-row items-center mt-2">
-                  <TouchableOpacity onPress={handleSaveTitle} disabled={savingTitle} className="mr-4">
+                  <TouchableOpacity
+                    onPress={handleSaveTitle}
+                    disabled={savingTitle}
+                    className="mr-4"
+                  >
                     {savingTitle ? (
-                      <ActivityIndicator size="small" color="#059669" />
+                      <ActivityIndicator size="small" color="#14532d" />
                     ) : (
-                      <Text className="text-emerald-600 font-semibold text-sm">Save</Text>
+                      <Text style={{ color: '#14532d' }} className="font-semibold text-sm">
+                        Save
+                      </Text>
                     )}
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => setRenaming(false)} disabled={savingTitle}>
@@ -233,16 +301,25 @@ export default function DocumentDetailScreen() {
               </View>
             ) : (
               <View className="flex-row items-center">
-                <Text className="text-xl font-bold text-slate-900 flex-shrink" numberOfLines={2}>
+                <Text
+                  className="text-xl font-bold text-slate-900 flex-shrink"
+                  numberOfLines={2}
+                >
                   {doc.title?.trim() || TYPE_LABELS[doc.type] || 'Document'}
                 </Text>
-                <TouchableOpacity onPress={startRename} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} className="ml-2">
+                <TouchableOpacity
+                  onPress={startRename}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  className="ml-2"
+                >
                   <Ionicons name="pencil" size={16} color="#94a3b8" />
                 </TouchableOpacity>
               </View>
             )}
             {doc.title?.trim() && !renaming && (
-              <Text className="text-xs text-slate-400 mt-0.5">{TYPE_LABELS[doc.type] ?? doc.type}</Text>
+              <Text className="text-xs text-slate-400 mt-0.5">
+                {TYPE_LABELS[doc.type] ?? doc.type}
+              </Text>
             )}
             {doc.hospitalName && (
               <Text className="text-sm text-slate-500 mt-0.5">{doc.hospitalName}</Text>
@@ -262,7 +339,15 @@ export default function DocumentDetailScreen() {
         )}
       </View>
 
+      {/* ── Body ── */}
       <ScrollView className="flex-1 p-4">
+
+        {/* ── Biomarkers review card (lab results) ── */}
+        {readings.length > 0 && (
+          <BiomarkersReviewCard readings={readings} onSave={handleSaveReadings} />
+        )}
+
+        {/* ── Extracted metadata (diagnosis / treatment) ── */}
         {(metadata.diagnosis || metadata.treatment) && (
           <View className="bg-white rounded-2xl border border-slate-200 p-4 mb-4">
             <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
@@ -283,57 +368,79 @@ export default function DocumentDetailScreen() {
           </View>
         )}
 
-        {(doc.status === 'processing' || doc.status === 'uploading') && (() => {
-          const stage = (metadata.processingStage as string) || 'queued';
-          const currentIdx = Math.max(0, STAGE_ORDER.indexOf(stage));
-          const remaining = Math.max(0, EST_TOTAL_SECONDS - elapsed);
-          return (
-            <View className="bg-amber-50 rounded-2xl border border-amber-200 p-4 mb-4">
-              <View className="flex-row items-center mb-3">
-                <ActivityIndicator size="small" color="#d97706" />
-                <Text className="text-amber-800 text-sm font-bold ml-3 flex-1">
-                  Processing document…
+        {/* ── Processing progress ── */}
+        {(doc.status === 'processing' || doc.status === 'uploading') &&
+          (() => {
+            const stage = (metadata.processingStage as string) || 'queued';
+            const currentIdx = Math.max(0, STAGE_ORDER.indexOf(stage));
+            const remaining = Math.max(0, EST_TOTAL_SECONDS - elapsed);
+            return (
+              <View className="bg-amber-50 rounded-2xl border border-amber-200 p-4 mb-4">
+                <View className="flex-row items-center mb-3">
+                  <ActivityIndicator size="small" color="#d97706" />
+                  <Text className="text-amber-800 text-sm font-bold ml-3 flex-1">
+                    Processing document…
+                  </Text>
+                  <Text className="text-amber-600 text-xs font-medium">{elapsed}s</Text>
+                </View>
+                {STAGES.map((s, i) => {
+                  const stageIdx = STAGE_ORDER.indexOf(s.key);
+                  const done = stageIdx < currentIdx;
+                  const active = stageIdx === currentIdx;
+                  return (
+                    <View key={s.key} className="flex-row items-center py-1">
+                      {done ? (
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={18}
+                          color="#059669"
+                          style={{ marginRight: 8 }}
+                        />
+                      ) : active ? (
+                        <Ionicons
+                          name="time-outline"
+                          size={18}
+                          color="#d97706"
+                          style={{ marginRight: 8 }}
+                        />
+                      ) : (
+                        <Ionicons
+                          name="ellipse-outline"
+                          size={18}
+                          color="#cbd5e1"
+                          style={{ marginRight: 8 }}
+                        />
+                      )}
+                      <Text
+                        className={`text-sm ${
+                          active
+                            ? 'text-amber-800 font-semibold'
+                            : done
+                              ? 'text-amber-600'
+                              : 'text-amber-400'
+                        }`}
+                      >
+                        {s.label}
+                      </Text>
+                    </View>
+                  );
+                })}
+                <Text className="text-amber-600 text-xs mt-3">
+                  {remaining > 0
+                    ? `Usually ready in about ${remaining}s. This runs with your AI key.`
+                    : 'Taking longer than usual — almost there…'}
                 </Text>
-                <Text className="text-amber-600 text-xs font-medium">{elapsed}s</Text>
               </View>
+            );
+          })()}
 
-              {STAGES.map((s, i) => {
-                const stageIdx = STAGE_ORDER.indexOf(s.key);
-                const done = stageIdx < currentIdx;
-                const active = stageIdx === currentIdx;
-                return (
-                  <View key={s.key} className="flex-row items-center py-1">
-                    {done
-                      ? <Ionicons name="checkmark-circle" size={18} color="#059669" style={{ marginRight: 8 }} />
-                      : active
-                      ? <Ionicons name="time-outline" size={18} color="#d97706" style={{ marginRight: 8 }} />
-                      : <Ionicons name="ellipse-outline" size={18} color="#cbd5e1" style={{ marginRight: 8 }} />
-                    }
-                    <Text
-                      className={`text-sm ${
-                        active ? 'text-amber-800 font-semibold' : done ? 'text-amber-600' : 'text-amber-400'
-                      }`}
-                    >
-                      {s.label}
-                    </Text>
-                  </View>
-                );
-              })}
-
-              <Text className="text-amber-600 text-xs mt-3">
-                {remaining > 0
-                  ? `Usually ready in about ${remaining}s. This runs with your AI key.`
-                  : 'Taking longer than usual — almost there…'}
-              </Text>
-            </View>
-          );
-        })()}
-
+        {/* ── Error state ── */}
         {doc.status === 'error' && (
           <View className="bg-red-50 rounded-2xl border border-red-200 p-4 mb-4">
             <Text className="text-red-700 text-sm font-bold mb-1">Processing failed</Text>
             <Text className="text-red-600 text-sm mb-3">
-              {(metadata.processingError as string) || 'Something went wrong while analysing this document.'}
+              {(metadata.processingError as string) ||
+                'Something went wrong while analysing this document.'}
             </Text>
             <TouchableOpacity
               onPress={handleRetry}
@@ -352,28 +459,48 @@ export default function DocumentDetailScreen() {
           </View>
         )}
 
+        {/* ── Processing note (e.g. no AI key) ── */}
         {doc.status === 'ready' && metadata.processingNote ? (
           <View className="bg-blue-50 rounded-2xl border border-blue-200 p-4 mb-4">
             <Text className="text-blue-700 text-sm">{metadata.processingNote as string}</Text>
           </View>
         ) : null}
 
+        {/* ── Raw extracted text (collapsed by default when biomarkers exist) ── */}
         {doc.extractedText ? (
-          <View className="bg-white rounded-2xl border border-slate-200 p-4 mb-4">
-            <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-              Extracted Text
-            </Text>
-            <Text className="text-sm text-slate-700 font-mono leading-relaxed">
-              {doc.extractedText}
-            </Text>
+          <View className="bg-white rounded-2xl border border-slate-200 mb-4 overflow-hidden">
+            <TouchableOpacity
+              onPress={() => setShowRawText((v) => !v)}
+              className="flex-row items-center justify-between px-4 py-3"
+              activeOpacity={0.7}
+            >
+              <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Raw Extracted Text
+              </Text>
+              <Ionicons
+                name={showRawText ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color="#94a3b8"
+              />
+            </TouchableOpacity>
+            {showRawText && (
+              <View className="px-4 pb-4 border-t border-slate-100">
+                <Text className="text-sm text-slate-700 font-mono leading-relaxed mt-3">
+                  {doc.extractedText}
+                </Text>
+              </View>
+            )}
           </View>
-        ) : doc.status === 'ready' ? (
+        ) : doc.status === 'ready' && readings.length === 0 ? (
           <View className="bg-white rounded-2xl border border-slate-200 p-4 mb-4 items-center py-8">
-            <Text className="text-slate-400 text-sm">No text could be extracted from this document.</Text>
+            <Text className="text-slate-400 text-sm">
+              No text could be extracted from this document.
+            </Text>
           </View>
         ) : null}
       </ScrollView>
 
+      {/* ── Bottom action bar ── */}
       <View className="p-4 border-t border-slate-200 gap-3">
         <TouchableOpacity
           onPress={handleSummarise}
@@ -383,8 +510,16 @@ export default function DocumentDetailScreen() {
           }`}
         >
           <View className="flex-row items-center gap-2">
-            <Ionicons name="sparkles" size={18} color={doc.status === 'ready' ? '#ffffff' : '#94a3b8'} />
-            <Text className={`font-bold text-base ${doc.status === 'ready' ? 'text-white' : 'text-slate-400'}`}>
+            <Ionicons
+              name="sparkles"
+              size={18}
+              color={doc.status === 'ready' ? '#ffffff' : '#94a3b8'}
+            />
+            <Text
+              className={`font-bold text-base ${
+                doc.status === 'ready' ? 'text-white' : 'text-slate-400'
+              }`}
+            >
               Summarise in Chat
             </Text>
           </View>

@@ -7,6 +7,7 @@ import { decrypt } from '../lib/crypto';
 import { getPresignedDownloadUrl } from './storage';
 import { generateAICompletion, AIProvider } from './ai-adapter';
 import { embedText } from './embedding';
+import { saveBiomarkerReadings, RawBiomarker } from './biomarkers';
 
 const DOCUMENT_TYPES = ['prescription', 'lab', 'invoice', 'imaging', 'other'] as const;
 type DocType = typeof DOCUMENT_TYPES[number];
@@ -135,6 +136,7 @@ async function runIngestion(documentId: string): Promise<void> {
   let extractedText = '';
   let docType: DocType = 'other';
   let meta: ExtractedMetadata = {};
+  let rawBiomarkers: RawBiomarker[] = [];
 
   await setStage(documentId, 'analyzing');
   try {
@@ -153,11 +155,23 @@ async function runIngestion(documentId: string): Promise<void> {
   "doctorName": "string or null",
   "hospitalName": "string or null",
   "diagnosis": "string or null",
-  "treatment": "string or null"
+  "treatment": "string or null",
+  "biomarkers": [
+    {
+      "name": "test name exactly as printed, e.g. Hemoglobin",
+      "value": 16.0,
+      "unit": "g/dL",
+      "refLow": 13.5,
+      "refHigh": 18
+    }
+  ]
 }
+For "biomarkers": include EVERY numeric lab/test result in the document (blood counts, lipids, glucose, vitamins, etc.). "value" must be a number. Use the printed reference/normal range for refLow and refHigh (numbers, or null if not printed). Return an empty array [] if the document has no numeric test results.
 Do not omit any text from the document in the "text" field. Use null where a field is not present.`,
     });
-    const parsed = parseJsonSafe<{ text?: string; type?: string } & ExtractedMetadata>(result.text, {});
+    const parsed = parseJsonSafe<
+      { text?: string; type?: string; biomarkers?: RawBiomarker[] } & ExtractedMetadata
+    >(result.text, {});
     extractedText = (parsed.text ?? '').trim();
     const rawType = (parsed.type ?? '').toLowerCase().trim();
     if (DOCUMENT_TYPES.includes(rawType as DocType)) {
@@ -170,6 +184,7 @@ Do not omit any text from the document in the "text" field. Use null where a fie
       diagnosis: parsed.diagnosis,
       treatment: parsed.treatment,
     };
+    rawBiomarkers = Array.isArray(parsed.biomarkers) ? parsed.biomarkers : [];
   } catch (err) {
     console.warn('[ingestion] Analysis failed:', err);
   }
@@ -205,5 +220,17 @@ Do not omit any text from the document in the "text" field. Use null where a fie
     })
     .where(eq(medicalDocuments.id, documentId));
 
-  console.log(`[ingestion] Document ${documentId} processed: type=${docType}, textLen=${extractedText.length}, embedded=${!!embedding}`);
+  // Persist structured biomarker readings (idempotent per document).
+  // Dated by the report date so the trend orders correctly across reports.
+  const measuredAt = (meta.date ?? doc.date ?? new Date().toISOString().slice(0, 10)).slice(0, 10);
+  let biomarkerCount = 0;
+  try {
+    biomarkerCount = await saveBiomarkerReadings(documentId, doc.profileId, measuredAt, rawBiomarkers);
+  } catch (err) {
+    console.warn('[ingestion] Saving biomarkers failed:', err);
+  }
+
+  console.log(
+    `[ingestion] Document ${documentId} processed: type=${docType}, textLen=${extractedText.length}, embedded=${!!embedding}, biomarkers=${biomarkerCount}`
+  );
 }

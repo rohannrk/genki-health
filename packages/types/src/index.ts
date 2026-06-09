@@ -93,3 +93,65 @@ export type SharedView = {
     downloadUrl: string;
   }>;
 };
+
+// ── Biomarkers ───────────────────────────────────────────────────────────────
+
+/** Where a measured value sits relative to its reference range. */
+export type BiomarkerStatus = 'low' | 'in' | 'high' | 'unknown';
+
+/** A single biomarker measurement extracted from one lab report. */
+export type BiomarkerReading = {
+  id: string;
+  profileId: string;
+  documentId: string;
+  /** Normalized identifier, e.g. 'hemoglobin'. */
+  code: string;
+  /** Display name, e.g. 'Hemoglobin'. */
+  name: string;
+  value: number;
+  unit: string;
+  refLow: number | null;
+  refHigh: number | null;
+  /** ISO date (YYYY-MM-DD) of the report this reading came from. */
+  measuredAt: string;
+};
+
+/** Latest reading per biomarker — used for the list/grid on Home. */
+export type BiomarkerSummary = {
+  code: string;
+  name: string;
+  value: number;
+  unit: string;
+  refLow: number | null;
+  refHigh: number | null;
+  status: BiomarkerStatus;
+  measuredAt: string;
+  /** Number of readings on record (trend depth). */
+  count: number;
+};
+
+/** A single point in a biomarker's history series. */
+export type BiomarkerHistoryPoint = {
+  value: number;
+  measuredAt: string;
+  documentId: string;
+  /** Reference range from the report this point came from (may differ per lab). */
+  refLow: number | null;
+  refHigh: number | null;
+  /** Status of this point against its own reference range. */
+  status: BiomarkerStatus;
+};
+
+/** Full detail: latest value + reference range + full history series. */
+export type BiomarkerDetail = BiomarkerSummary & {
+  /** Change vs. the previous reading in `unit` (null if only one reading). */
+  delta: number | null;
+  history: BiomarkerHistoryPoint[];
+};
+
+/** Payload for correcting an extracted biomarker reading (user edits). */
+export type UpdateBiomarkerReadingInput = {
+  value: number;
+  refLow: number | null;
+  refHigh: number | null;
+};

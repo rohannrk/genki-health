@@ -10,11 +10,13 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
-import { documents as docsApi } from '@medcopilot/api-client';
-import { MedicalDocument } from '@medcopilot/types';
+import { documents as docsApi, biomarkers as biomarkersApi } from '@medcopilot/api-client';
+import { MedicalDocument, BiomarkerSummary } from '@medcopilot/types';
 import { formatDate } from '@medcopilot/utils';
 import { useProfile } from '../../../src/context/ProfileContext';
 import { DOC_TYPE_ICON_NAMES } from '../../../src/lib/docTypeUtils';
+import { statusMeta, formatValue } from '../../../src/features/biomarker/data';
+import { SERIF } from '../../../src/features/biomarker/theme';
 
 const TYPE_FILTERS = ['all', 'prescription', 'lab', 'imaging', 'invoice', 'other'] as const;
 type TypeFilter = typeof TYPE_FILTERS[number];
@@ -43,6 +45,7 @@ export default function TimelineTab() {
   const { profiles, activeProfile } = useProfile();
 
   const [documents, setDocuments] = useState<MedicalDocument[]>([]);
+  const [biomarkers, setBiomarkers] = useState<BiomarkerSummary[]>([]);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -67,6 +70,10 @@ export default function TimelineTab() {
         filter !== 'all' ? { type: filter } : {}
       );
       setDocuments(res.documents);
+
+      // Biomarkers are profile-wide (independent of the type filter).
+      const bios = await biomarkersApi.list(profile.id, token).catch(() => []);
+      setBiomarkers(bios);
     } catch (err) {
       console.error('Error loading documents:', err);
     } finally {
@@ -140,6 +147,57 @@ export default function TimelineTab() {
           className="flex-1 px-4 pt-3"
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#059669" />}
         >
+          {/* Biomarkers — latest value per marker; tap to see the trend */}
+          {biomarkers.length > 0 && (
+            <View className="mb-4">
+              <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                Biomarkers
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                className="-mx-4"
+                contentContainerStyle={{ paddingHorizontal: 16 }}
+              >
+                {biomarkers.map((b) => {
+                  const meta = statusMeta(b.status);
+                  return (
+                    <TouchableOpacity
+                      key={b.code}
+                      onPress={() => router.push(`/(app)/biomarker/${b.code}` as any)}
+                      className="bg-white rounded-2xl border border-slate-200 p-3 mr-3"
+                      style={{ width: 132 }}
+                      activeOpacity={0.8}
+                    >
+                      <Text className="text-xs text-slate-500" numberOfLines={1}>
+                        {b.name}
+                      </Text>
+                      <View className="flex-row items-baseline mt-1">
+                        <Text style={{ fontFamily: SERIF, fontSize: 24, color: '#0f172a' }}>
+                          {formatValue(b.value)}
+                        </Text>
+                        {b.unit ? (
+                          <Text className="text-[11px] text-slate-400 ml-1" numberOfLines={1}>
+                            {b.unit}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <View className="flex-row items-center mt-2">
+                        <View
+                          className="w-1.5 h-1.5 rounded-full mr-1"
+                          style={{ backgroundColor: meta.color }}
+                        />
+                        <Text className="text-[11px]" style={{ color: meta.color }} numberOfLines={1}>
+                          {meta.label}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
           {documents.length === 0 ? (
             <View className="bg-white rounded-2xl border border-slate-200 p-8 items-center my-4">
               <Ionicons name="documents-outline" size={48} color="#cbd5e1" style={{ marginBottom: 12 }} />

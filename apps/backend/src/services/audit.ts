@@ -24,7 +24,8 @@ export type AuditAction =
   | 'pdf_export'
   | 'fhir_export'
   | 'consent_updated'
-  | 'account_deleted';
+  | 'account_deleted'
+  | 'update_biomarker_reading';
 
 export interface LogAuditInput {
   /** The acting user. May be null for system-initiated events. */

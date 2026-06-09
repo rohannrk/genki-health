@@ -8,6 +8,7 @@ export type {
   DocumentListOptions,
   ExportPdfInput,
 } from './documents';
+export { biomarkers } from './biomarkers';
 export { ai } from './ai';
 export type { ChatMessage, SearchResult, ChatSource, ChatResponse, SummariseResponse } from './ai';
 export { audit } from './audit';
