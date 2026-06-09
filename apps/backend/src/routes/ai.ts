@@ -350,7 +350,7 @@ router.post(
             meta.treatment ? `Treatment: ${meta.treatment}` : '',
             d.doctor_name ? `Doctor: ${d.doctor_name}` : '',
           ].filter(Boolean).join(' | ');
-          return `[Doc: ${d.id}]\nType: ${d.type} | Date: ${d.date ?? 'unknown'} | Hospital: ${d.hospital_name ?? 'unknown'}${extras ? '\n' + extras : ''}\n\nFull text:\n${d.extracted_text!.slice(0, 3000)}`;
+          return `[Doc: ${d.id}]\nType: ${d.type} | Date: ${d.date ?? 'unknown'} | Hospital: ${d.hospital_name ?? 'unknown'}${extras ? '\n' + extras : ''}\n\nFull text:\n${d.extracted_text!.slice(0, 8000)}`;
         })
         .join('\n\n---\n\n');
 
