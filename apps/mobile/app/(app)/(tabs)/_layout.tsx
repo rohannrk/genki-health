@@ -48,6 +48,9 @@ export default function TabLayout() {
           title: 'Search',
           tabBarLabel: 'Search',
           tabBarIcon: ({ color }) => <Ionicons name="search-outline" size={22} color={color} />,
+          headerTitle: () => (
+            <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 18 }}>Search</Text>
+          ),
         }}
       />
       <Tabs.Screen
