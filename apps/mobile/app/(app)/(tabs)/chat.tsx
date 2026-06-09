@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, memo } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ListRenderItem,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -54,7 +53,7 @@ async function writeCache(profileId: string, messages: Message[]): Promise<void>
   }
 }
 
-function SourceCard({ source, onPress }: { source: ChatSource; onPress: () => void }) {
+const SourceCard = memo(function SourceCard({ source, onPress }: { source: ChatSource; onPress: () => void }) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -74,7 +73,41 @@ function SourceCard({ source, onPress }: { source: ChatSource; onPress: () => vo
       <Ionicons name="chevron-forward" size={14} color="#94a3b8" />
     </TouchableOpacity>
   );
-}
+});
+
+const MessageItem = memo(function MessageItem({
+  item,
+  onSourcePress,
+}: {
+  item: Message;
+  onSourcePress: (documentId: string) => void;
+}) {
+  const isUser = item.role === 'user';
+  return (
+    <View className={`mb-3 ${isUser ? 'items-end' : 'items-start'}`}>
+      <View
+        className={`max-w-[82%] px-4 py-3 rounded-2xl ${
+          isUser ? 'bg-slate-900 rounded-tr-sm' : 'bg-white border border-slate-200 rounded-tl-sm'
+        }`}
+      >
+        <Text className={`text-sm leading-relaxed ${isUser ? 'text-white' : 'text-slate-800'}`}>
+          {item.content}
+        </Text>
+      </View>
+      {!isUser && item.sources && item.sources.length > 0 && (
+        <View className="mt-1 max-w-[82%] w-full">
+          {item.sources.map(s => (
+            <SourceCard
+              key={s.documentId}
+              source={s}
+              onPress={() => onSourcePress(s.documentId)}
+            />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+});
 
 function serverToMessages(rows: HistoryMessage[]): Message[] {
   return rows.map(r => ({
@@ -243,33 +276,15 @@ export default function ChatTab() {
     }
   }, [summariseDocId, summariseNonce, summariseDoc]);
 
-  const renderMessage: ListRenderItem<Message> = ({ item }) => {
-    const isUser = item.role === 'user';
-    return (
-      <View className={`mb-3 ${isUser ? 'items-end' : 'items-start'}`}>
-        <View
-          className={`max-w-[82%] px-4 py-3 rounded-2xl ${
-            isUser ? 'bg-slate-900 rounded-tr-sm' : 'bg-white border border-slate-200 rounded-tl-sm'
-          }`}
-        >
-          <Text className={`text-sm leading-relaxed ${isUser ? 'text-white' : 'text-slate-800'}`}>
-            {item.content}
-          </Text>
-        </View>
-        {!isUser && item.sources && item.sources.length > 0 && (
-          <View className="mt-1 max-w-[82%] w-full">
-            {item.sources.map(s => (
-              <SourceCard
-                key={s.documentId}
-                source={s}
-                onPress={() => router.push(`/(app)/document/${s.documentId}` as any)}
-              />
-            ))}
-          </View>
-        )}
-      </View>
-    );
-  };
+  const onSourcePress = useCallback(
+    (documentId: string) => router.push(`/(app)/document/${documentId}` as any),
+    [router]
+  );
+
+  const renderMessage = useCallback(
+    ({ item }: { item: Message }) => <MessageItem item={item} onSourcePress={onSourcePress} />,
+    [onSourcePress]
+  );
 
   return (
     <KeyboardAvoidingView
