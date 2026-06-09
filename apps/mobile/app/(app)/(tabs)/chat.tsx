@@ -109,6 +109,9 @@ const MessageItem = memo(function MessageItem({
   );
 });
 
+const LIST_CONTENT_STYLE = { padding: 16, paddingBottom: 8 };
+const keyExtractor = (item: Message) => item.id;
+
 function serverToMessages(rows: HistoryMessage[]): Message[] {
   return rows.map(r => ({
     id: r.id,
@@ -131,6 +134,11 @@ export default function ChatTab() {
 
   const scrollToEnd = useCallback(
     () => setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100),
+    []
+  );
+
+  const scrollToBottomOnResize = useCallback(
+    () => flatListRef.current?.scrollToEnd({ animated: false }),
     []
   );
 
@@ -305,9 +313,9 @@ export default function ChatTab() {
         ref={flatListRef}
         data={messages}
         renderItem={renderMessage}
-        keyExtractor={item => item.id}
-        contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+        keyExtractor={keyExtractor}
+        contentContainerStyle={LIST_CONTENT_STYLE}
+        onContentSizeChange={scrollToBottomOnResize}
       />
 
       {/* Loading indicators */}
