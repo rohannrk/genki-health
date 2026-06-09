@@ -11,7 +11,6 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
 import * as WebBrowser from 'expo-web-browser';
 import { documents as documentsApi, shares as sharesApi } from '@medcopilot/api-client';
 import type { MedicalDocument, Share } from '@medcopilot/types';
@@ -238,27 +237,14 @@ export default function ShareScreen() {
               <Text className="text-xs text-slate-400 mb-4">
                 Expires {new Date(share.expiresAt).toLocaleString()}
               </Text>
-              <View className="flex-row gap-x-3">
-                <TouchableOpacity
-                  onPress={() => {
-                    Clipboard.setStringAsync(share.url);
-                    Alert.alert('Copied', 'Link copied to clipboard.');
-                  }}
-                  className="flex-1 py-3 rounded-xl border border-teal-600 items-center"
-                  accessibilityRole="button"
-                  accessibilityLabel="Copy link"
-                >
-                  <Text className="text-teal-700 font-bold text-sm">Copy link</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleSendLink}
-                  className="flex-1 bg-teal-600 py-3 rounded-xl items-center"
-                  accessibilityRole="button"
-                  accessibilityLabel="Send link"
-                >
-                  <Text className="text-white font-bold text-sm">Send link</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                onPress={handleSendLink}
+                className="bg-teal-600 py-3 rounded-xl items-center justify-center w-full"
+                accessibilityRole="button"
+                accessibilityLabel="Send link"
+              >
+                <Text className="text-white font-bold text-base">Send link</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <TouchableOpacity
