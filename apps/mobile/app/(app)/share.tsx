@@ -11,8 +11,8 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import * as WebBrowser from 'expo-web-browser';
-import QRCode from 'react-native-qrcode-svg';
 import { documents as documentsApi, shares as sharesApi } from '@medcopilot/api-client';
 import type { MedicalDocument, Share } from '@medcopilot/types';
 import { useProfile } from '../../src/context/ProfileContext';
@@ -226,26 +226,39 @@ export default function ShareScreen() {
             })}
           </View>
 
-          {/* Generated link + QR */}
+          {/* Generated link */}
           {share ? (
-            <View className="bg-white rounded-xl border border-slate-200 p-4 mb-5 items-center">
-              <View className="p-3 bg-white rounded-lg">
-                <QRCode value={share.url} size={180} />
-              </View>
-              <Text className="text-xs text-slate-400 mt-3 text-center" selectable>
+            <View className="bg-white rounded-xl border border-slate-200 p-4 mb-5">
+              <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                Share link
+              </Text>
+              <Text className="text-xs text-slate-600 mb-1" selectable numberOfLines={2}>
                 {share.url}
               </Text>
-              <Text className="text-xs text-slate-400 mt-1">
+              <Text className="text-xs text-slate-400 mb-4">
                 Expires {new Date(share.expiresAt).toLocaleString()}
               </Text>
-              <TouchableOpacity
-                onPress={handleSendLink}
-                className="bg-teal-600 py-3 rounded-xl items-center justify-center w-full mt-4"
-                accessibilityRole="button"
-                accessibilityLabel="Send link"
-              >
-                <Text className="text-white font-bold text-base">Send link</Text>
-              </TouchableOpacity>
+              <View className="flex-row gap-x-3">
+                <TouchableOpacity
+                  onPress={() => {
+                    Clipboard.setStringAsync(share.url);
+                    Alert.alert('Copied', 'Link copied to clipboard.');
+                  }}
+                  className="flex-1 py-3 rounded-xl border border-teal-600 items-center"
+                  accessibilityRole="button"
+                  accessibilityLabel="Copy link"
+                >
+                  <Text className="text-teal-700 font-bold text-sm">Copy link</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleSendLink}
+                  className="flex-1 bg-teal-600 py-3 rounded-xl items-center"
+                  accessibilityRole="button"
+                  accessibilityLabel="Send link"
+                >
+                  <Text className="text-white font-bold text-sm">Send link</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ) : (
             <TouchableOpacity
