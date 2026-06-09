@@ -47,16 +47,24 @@ export default function TimelineTab() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Refs so loadDocuments never needs to change identity.
+  const activeProfileRef = useRef(activeProfile);
+  activeProfileRef.current = activeProfile;
+  const typeFilterRef = useRef(typeFilter);
+  typeFilterRef.current = typeFilter;
+
   const loadDocuments = useCallback(async (showLoader = true) => {
-    if (!activeProfile) return;
+    const profile = activeProfileRef.current;
+    if (!profile) return;
     if (showLoader) setLoading(true);
     try {
       const token = await getTokenRef.current();
       if (!token) return;
+      const filter = typeFilterRef.current;
       const res = await docsApi.list(
-        activeProfile.id,
+        profile.id,
         token,
-        typeFilter !== 'all' ? { type: typeFilter } : {}
+        filter !== 'all' ? { type: filter } : {}
       );
       setDocuments(res.documents);
     } catch (err) {
@@ -65,16 +73,13 @@ export default function TimelineTab() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeProfile?.id, typeFilter]);
+  }, []);
 
-  useEffect(() => { loadDocuments(); }, [loadDocuments]);
+  // Re-fetch when profile or filter changes.
+  useEffect(() => { loadDocuments(); }, [activeProfile?.id, typeFilter]);
 
-  // Refresh when the tab regains focus (e.g. after upload or delete).
-  useFocusEffect(
-    useCallback(() => {
-      loadDocuments(false);
-    }, [loadDocuments])
-  );
+  // Refresh on tab focus (e.g. after upload or delete) — stable callback.
+  useFocusEffect(useCallback(() => { loadDocuments(false); }, []));
 
   const onRefresh = () => {
     setRefreshing(true);
