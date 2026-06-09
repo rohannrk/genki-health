@@ -7,6 +7,7 @@ const baseDoc = {
   id: 'd-1',
   type: 'lab',
   status: 'ready',
+  title: null,
   date: '2026-05-01',
   createdAt: new Date('2026-05-02T10:00:00Z'),
   hospitalName: 'City Hospital',

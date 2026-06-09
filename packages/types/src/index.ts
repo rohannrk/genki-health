@@ -41,6 +41,8 @@ export type MedicalDocument = {
   profileId: string;
   type: DocumentType;
   status: DocumentStatus;
+  /** User-assigned display name (rename). Null/absent → fall back to type/filename. */
+  title?: string | null;
   date: string;
   hospitalName?: string;
   doctorName?: string;

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSignIn } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthContext } from '../../src/context/AuthContext';
 
 export default function LoginScreen() {
@@ -68,7 +69,7 @@ export default function LoginScreen() {
           {/* Header */}
           <View className="items-center mb-10">
             <View className="w-16 h-16 rounded-2xl bg-emerald-600 items-center justify-center mb-4 shadow-lg">
-              <Text className="text-3xl">🩺</Text>
+              <Ionicons name="medkit-outline" size={30} color="#ffffff" />
             </View>
             <Text className="text-3xl font-extrabold text-slate-900 tracking-tight">
               Medical Copilot

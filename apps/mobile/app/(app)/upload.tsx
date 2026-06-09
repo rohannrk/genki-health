@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { documents as docsApi } from '@medcopilot/api-client';
@@ -105,7 +106,7 @@ export default function UploadScreen() {
       {/* Header */}
       <View className="flex-row items-center px-4 pt-14 pb-4 border-b border-slate-200">
         <TouchableOpacity onPress={() => router.back()} className="mr-4 p-1">
-          <Text className="text-slate-500 text-base">✕</Text>
+          <Ionicons name="close" size={22} color="#64748b" />
         </TouchableOpacity>
         <Text className="text-lg font-bold text-slate-900">Upload Document</Text>
       </View>
@@ -138,7 +139,7 @@ export default function UploadScreen() {
             onPress={pickDocument}
             className="flex-1 border-2 border-dashed border-slate-300 rounded-2xl py-6 items-center"
           >
-            <Text className="text-2xl mb-1">📄</Text>
+            <Ionicons name="document-outline" size={32} color="#64748b" style={{ marginBottom: 4 }} />
             <Text className="text-sm font-semibold text-slate-600">Pick File</Text>
             <Text className="text-xs text-slate-400">PDF, JPG, PNG</Text>
           </TouchableOpacity>
@@ -147,7 +148,7 @@ export default function UploadScreen() {
             onPress={pickFromCamera}
             className="flex-1 border-2 border-dashed border-slate-300 rounded-2xl py-6 items-center"
           >
-            <Text className="text-2xl mb-1">📷</Text>
+            <Ionicons name="camera-outline" size={32} color="#64748b" style={{ marginBottom: 4 }} />
             <Text className="text-sm font-semibold text-slate-600">Camera</Text>
             <Text className="text-xs text-slate-400">Take photo</Text>
           </TouchableOpacity>

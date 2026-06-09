@@ -1,4 +1,4 @@
-import { get, post, del, getBaseUrl } from './http';
+import { get, post, patch, del, getBaseUrl } from './http';
 import { MedicalDocument } from '@medcopilot/types';
 
 export interface UploadUrlResponse {
@@ -68,6 +68,16 @@ export const documents = {
 
   async delete(documentId: string, token: string): Promise<void> {
     await del(`/api/v1/documents/${documentId}`, token);
+  },
+
+  /** Rename a document (user-assigned display name). Pass null to clear. */
+  async rename(documentId: string, title: string | null, token: string): Promise<MedicalDocument> {
+    const res = await patch<{ data: MedicalDocument }>(
+      `/api/v1/documents/${documentId}`,
+      { title },
+      token
+    );
+    return (res as any).data;
   },
 
   async retry(documentId: string, token: string): Promise<{ documentId: string; status: string }> {

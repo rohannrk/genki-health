@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import QRCode from 'react-native-qrcode-svg';
 import { documents as documentsApi, shares as sharesApi } from '@medcopilot/api-client';
@@ -139,7 +140,7 @@ export default function ShareScreen() {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Text className="text-teal-600 text-base font-medium mr-3">‹ Back</Text>
+          <Ionicons name="arrow-back" size={20} color="#0d9488" style={{ marginRight: 12 }} />
         </TouchableOpacity>
         <Text className="text-2xl font-bold text-slate-800">Share Records</Text>
       </View>
@@ -177,7 +178,7 @@ export default function ShareScreen() {
                         isOn ? 'bg-teal-600 border-teal-600' : 'border-slate-300'
                       }`}
                     >
-                      {isOn ? <Text className="text-white text-xs font-bold">✓</Text> : null}
+                      {isOn ? <Ionicons name="checkmark" size={12} color="#ffffff" /> : null}
                     </View>
                     <View className="flex-1">
                       <Text className="text-sm font-medium text-slate-700">

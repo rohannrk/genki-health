@@ -65,6 +65,7 @@ router.get(
         docs.map(async (doc) => ({
           id: doc.id,
           type: doc.type,
+          title: doc.title,
           date: doc.date,
           hospitalName: doc.hospitalName,
           doctorName: doc.doctorName,

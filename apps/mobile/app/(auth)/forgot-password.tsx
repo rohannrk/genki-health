@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSignIn } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -63,7 +64,7 @@ export default function ForgotPasswordScreen() {
           {/* Header */}
           <View className="items-center mb-10">
             <View className="w-16 h-16 rounded-2xl bg-slate-200 items-center justify-center mb-4">
-              <Text className="text-3xl">🔑</Text>
+              <Ionicons name="key-outline" size={30} color="#334155" />
             </View>
             <Text className="text-3xl font-extrabold text-slate-900 tracking-tight">
               Forgot password?
@@ -124,7 +125,10 @@ export default function ForgotPasswordScreen() {
               onPress={() => router.back()}
               accessibilityLabel="Back to sign in"
             >
-              <Text className="text-sm font-semibold text-emerald-600">← Back to sign in</Text>
+              <View className="flex-row items-center gap-1">
+                <Ionicons name="arrow-back" size={14} color="#059669" />
+                <Text className="text-sm font-semibold text-emerald-600">Back to sign in</Text>
+              </View>
             </TouchableOpacity>
           </View>
         </View>

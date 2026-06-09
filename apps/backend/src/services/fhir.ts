@@ -16,7 +16,7 @@ const TYPE_TEXT: Record<string, string> = {
 export interface FhirDocumentInput {
   document: Pick<
     MedicalDocument,
-    'id' | 'type' | 'status' | 'date' | 'createdAt' | 'hospitalName'
+    'id' | 'type' | 'status' | 'title' | 'date' | 'createdAt' | 'hospitalName'
   >;
   /** Presigned, time-limited URL to the underlying file. */
   attachmentUrl: string;
@@ -54,6 +54,7 @@ export function buildFhirBundle(
         // Map internal upload/processing states to FHIR document status.
         status: document.status === 'ready' ? 'current' : 'preliminary',
         type: { text: TYPE_TEXT[document.type] ?? 'Clinical document' },
+        description: document.title ?? undefined,
         subject: { reference: `Patient/${profile.id}` },
         date: (document.date ? new Date(document.date) : document.createdAt).toISOString(),
         author: document.hospitalName ? [{ display: document.hospitalName }] : undefined,

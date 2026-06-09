@@ -45,7 +45,7 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
 export async function buildRecordsPdf(
   profile: Pick<PatientProfile, 'name' | 'dob' | 'relation'>,
   documents: Array<
-    Pick<MedicalDocument, 'type' | 'date' | 'hospitalName' | 'doctorName' | 'extractedText'>
+    Pick<MedicalDocument, 'type' | 'title' | 'date' | 'hospitalName' | 'doctorName' | 'extractedText'>
   >
 ): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
@@ -102,7 +102,7 @@ export async function buildRecordsPdf(
 
   documents.forEach((doc, i) => {
     ensureSpace(60);
-    const label = DOC_TYPE_LABELS[doc.type] ?? doc.type;
+    const label = doc.title?.trim() || DOC_TYPE_LABELS[doc.type] || doc.type;
     drawLine(`${i + 1}. ${label}${doc.date ? ` — ${doc.date}` : ''}`, {
       size: 14,
       font: bold,

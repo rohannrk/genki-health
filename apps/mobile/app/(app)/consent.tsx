@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
 import { consent as consentApi, audit as auditApi } from '@medcopilot/api-client';
 import type { AuditLog, ConsentSettings } from '@medcopilot/types';
 
@@ -150,7 +151,7 @@ export default function ConsentScreen() {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Text className="text-teal-600 text-base font-medium mr-3">‹ Back</Text>
+          <Ionicons name="arrow-back" size={20} color="#0d9488" style={{ marginRight: 12 }} />
         </TouchableOpacity>
         <Text className="text-2xl font-bold text-slate-800">Consent &amp; Privacy</Text>
       </View>

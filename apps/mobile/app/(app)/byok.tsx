@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { useProfile } from '../../src/context/ProfileContext';
 
@@ -22,7 +23,7 @@ type Provider = {
   id: ProviderId;
   name: string;
   model: string;
-  icon: string;
+  iconName: keyof typeof Ionicons.glyphMap;
   placeholder: string;
   keyUrl: string;
 };
@@ -32,7 +33,7 @@ const PROVIDERS: Provider[] = [
     id: 'openai',
     name: 'OpenAI',
     model: 'GPT-4o',
-    icon: '🤖',
+    iconName: 'hardware-chip-outline',
     placeholder: 'sk-proj-...',
     keyUrl: 'https://platform.openai.com/api-keys',
   },
@@ -40,7 +41,7 @@ const PROVIDERS: Provider[] = [
     id: 'anthropic',
     name: 'Anthropic',
     model: 'Claude Sonnet',
-    icon: '🧠',
+    iconName: 'bulb-outline',
     placeholder: 'sk-ant-...',
     keyUrl: 'https://console.anthropic.com/keys',
   },
@@ -48,7 +49,7 @@ const PROVIDERS: Provider[] = [
     id: 'gemini',
     name: 'Gemini',
     model: 'Gemini 3.5 Flash',
-    icon: '✨',
+    iconName: 'flash-outline',
     placeholder: 'AIza...',
     keyUrl: 'https://aistudio.google.com/apikey',
   },
@@ -198,7 +199,12 @@ export default function ByokScreen() {
                       : 'border-slate-200 bg-white'
                   }`}
                 >
-                  <Text className="text-2xl mb-1.5">{p.icon}</Text>
+                  <Ionicons
+                    name={p.iconName}
+                    size={26}
+                    color={selected ? '#0d9488' : '#334155'}
+                    style={{ marginBottom: 6 }}
+                  />
                   <Text
                     className={`text-sm font-bold ${
                       selected ? 'text-teal-700' : 'text-slate-900'
@@ -244,7 +250,11 @@ export default function ByokScreen() {
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   accessibilityLabel={showKey ? 'Hide API key' : 'Show API key'}
                 >
-                  <Text className="text-lg">{showKey ? '🙈' : '👁️'}</Text>
+                  <Ionicons
+                    name={showKey ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color="#94a3b8"
+                  />
                 </TouchableOpacity>
               )}
             </View>

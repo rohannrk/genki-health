@@ -9,12 +9,17 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
 import { ai as aiApi, SearchResult } from '@medcopilot/api-client';
 import { useProfile } from '../../../src/context/ProfileContext';
 import { formatDate } from '@medcopilot/utils';
 
-const TYPE_ICONS: Record<string, string> = {
-  prescription: '💊', lab: '🔬', imaging: '🩻', invoice: '🧾', other: '📄',
+const TYPE_ICON_NAMES: Record<string, keyof typeof Ionicons.glyphMap> = {
+  prescription: 'medkit-outline',
+  lab: 'flask-outline',
+  imaging: 'scan-outline',
+  invoice: 'receipt-outline',
+  other: 'document-text-outline',
 };
 
 export default function SearchTab() {
@@ -59,7 +64,7 @@ export default function SearchTab() {
       <View className="bg-white border-b border-slate-200 px-4 pt-14 pb-4">
         <Text className="text-xl font-bold text-slate-900 mb-3">Search Records</Text>
         <View className="flex-row items-center bg-slate-100 rounded-2xl px-4 py-2.5">
-          <Text className="text-slate-400 mr-2">🔍</Text>
+          <Ionicons name="search-outline" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
           <TextInput
             value={query}
             onChangeText={onChangeQuery}
@@ -76,7 +81,7 @@ export default function SearchTab() {
       <ScrollView className="flex-1 p-4">
         {!searched && !loading && (
           <View className="items-center py-12">
-            <Text className="text-4xl mb-3">🔬</Text>
+            <Ionicons name="flask-outline" size={48} color="#cbd5e1" style={{ marginBottom: 12 }} />
             <Text className="text-slate-500 text-sm text-center font-medium">
               Search across all patient records using natural language.
             </Text>
@@ -88,7 +93,7 @@ export default function SearchTab() {
 
         {searched && results.length === 0 && !loading && (
           <View className="items-center py-12">
-            <Text className="text-4xl mb-3">🔎</Text>
+            <Ionicons name="search-outline" size={48} color="#cbd5e1" style={{ marginBottom: 12 }} />
             <Text className="text-slate-500 text-sm text-center">No matching records found.</Text>
           </View>
         )}
@@ -102,7 +107,12 @@ export default function SearchTab() {
           >
             <View className="flex-row items-center justify-between mb-2">
               <View className="flex-row items-center">
-                <Text className="text-base mr-2">{TYPE_ICONS[r.type] ?? '📄'}</Text>
+                <Ionicons
+                  name={TYPE_ICON_NAMES[r.type] ?? 'document-text-outline'}
+                  size={16}
+                  color="#475569"
+                  style={{ marginRight: 8 }}
+                />
                 <Text className="text-sm font-bold text-slate-800 capitalize">{r.type}</Text>
               </View>
               <View className="flex-row items-center">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { ProfileSwitcher } from '../../../src/components/ProfileSwitcher';
 
 export default function TabLayout() {
@@ -34,7 +35,7 @@ export default function TabLayout() {
         options={{
           title: 'Timeline',
           tabBarLabel: 'Timeline',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>📅</Text>,
+          tabBarIcon: ({ color }) => <Ionicons name="calendar-outline" size={22} color={color} />,
           // Timeline has its own in-page patient selector — no header switcher here.
           headerTitle: () => (
             <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 18 }}>Timeline</Text>
@@ -46,7 +47,7 @@ export default function TabLayout() {
         options={{
           title: 'Search',
           tabBarLabel: 'Search',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>🔍</Text>,
+          tabBarIcon: ({ color }) => <Ionicons name="search-outline" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -54,7 +55,7 @@ export default function TabLayout() {
         options={{
           title: 'Chat',
           tabBarLabel: 'Chat',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>💬</Text>,
+          tabBarIcon: ({ color }) => <Ionicons name="chatbubble-outline" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -62,7 +63,7 @@ export default function TabLayout() {
         options={{
           title: 'Settings',
           tabBarLabel: 'Settings',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>⚙️</Text>,
+          tabBarIcon: ({ color }) => <Ionicons name="settings-outline" size={22} color={color} />,
           // No profile switcher on Settings — show a plain title instead.
           headerTitle: () => (
             <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 18 }}>Settings</Text>

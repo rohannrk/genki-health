@@ -65,6 +65,16 @@ const exportPdfSchema = {
   }),
 };
 
+const renameSchema = {
+  params: z.object({
+    documentId: z.string().uuid('Invalid document ID format'),
+  }),
+  body: z.object({
+    // null clears the title; a non-null value must be 1–255 non-blank chars.
+    title: z.string().trim().min(1, 'Title cannot be blank').max(255).nullable(),
+  }),
+};
+
 // Response Formatter (strips internal fileKey)
 const formatDocument = async (doc: MedicalDocument) => {
   const downloadUrl = await getPresignedDownloadUrl(doc.fileKey);
@@ -73,6 +83,7 @@ const formatDocument = async (doc: MedicalDocument) => {
     profileId: doc.profileId,
     type: doc.type,
     status: doc.status,
+    title: doc.title,
     date: doc.date,
     hospitalName: doc.hospitalName,
     doctorName: doc.doctorName,
@@ -425,6 +436,69 @@ router.get(
       res.status(200).json({
         status: 'success',
         data: response,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * PATCH /documents/:documentId
+ * Renames a document (user-assigned display name). Pass title: null to clear.
+ */
+router.patch(
+  '/:documentId',
+  validate(renameSchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.dbUser!.id;
+      const { documentId } = req.params;
+      const { title } = req.body as { title: string | null };
+
+      const doc = await verifyDocumentOwnership(documentId, userId);
+      if (!doc) {
+        res.status(403).json({
+          status: 'error',
+          message: 'Forbidden: Document not found or access denied',
+        });
+        return;
+      }
+
+      const [updated] = await db
+        .update(medicalDocuments)
+        .set({ title: title ?? null })
+        .where(eq(medicalDocuments.id, documentId))
+        .returning();
+
+      if (!updated) {
+        res.status(404).json({ status: 'error', message: 'Document not found' });
+        return;
+      }
+
+      logAudit({
+        userId,
+        action: 'rename_document',
+        documentIds: [documentId],
+        metadata: { title: updated.title },
+        req,
+      });
+
+      res.status(200).json({
+        status: 'success',
+        data: {
+          id: updated.id,
+          profileId: updated.profileId,
+          type: updated.type,
+          status: updated.status,
+          title: updated.title,
+          date: updated.date,
+          hospitalName: updated.hospitalName,
+          doctorName: updated.doctorName,
+          extractedText: updated.extractedText,
+          metadata: updated.metadata,
+          createdAt: updated.createdAt,
+        },
       });
     } catch (error) {
       next(error);

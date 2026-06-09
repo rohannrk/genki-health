@@ -5,6 +5,7 @@ const profile = { name: 'Jane Doe', dob: '1990-04-12', relation: 'self' };
 
 const doc = {
   type: 'prescription',
+  title: null,
   date: '2026-05-01',
   hospitalName: 'City Hospital',
   doctorName: 'Dr. Smith',

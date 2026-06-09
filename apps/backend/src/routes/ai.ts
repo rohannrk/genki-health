@@ -65,7 +65,7 @@ function getDecryptedKey(
 async function retrieveSimilarDocs(profileId: string, queryVec: number[], limit = 5) {
   const vecLiteral = `[${queryVec.join(',')}]`;
   const rows = await db.execute(
-    sql`SELECT id, type, status, date, hospital_name, doctor_name, extracted_text, metadata,
+    sql`SELECT id, type, status, title, date, hospital_name, doctor_name, extracted_text, metadata,
                1 - (embedding <=> ${vecLiteral}::vector) AS score
         FROM medical_documents
         WHERE profile_id = ${profileId}::uuid
@@ -78,6 +78,7 @@ async function retrieveSimilarDocs(profileId: string, queryVec: number[], limit 
     id: string;
     type: string;
     status: string;
+    title: string | null;
     date: string | null;
     hospital_name: string | null;
     doctor_name: string | null;
@@ -146,7 +147,7 @@ router.post(
       }).catch(() => {});
 
       // Fall back to keyword search if no BYOK key or embedding fails
-      let results: Array<{ documentId: string; type: string; date: string | null; hospitalName: string | null; excerpt: string; score: number }> = [];
+      let results: Array<{ documentId: string; type: string; title: string | null; date: string | null; hospitalName: string | null; excerpt: string; score: number }> = [];
 
       if (creds) {
         const geminiKey = creds.provider === 'gemini' ? creds.apiKey : null;
@@ -157,6 +158,7 @@ router.post(
           results = rows.map(r => ({
             documentId: r.id,
             type: r.type,
+            title: r.title,
             date: r.date,
             hospitalName: r.hospital_name,
             excerpt: excerpt(r.extracted_text),
@@ -178,6 +180,7 @@ router.post(
           .map(d => ({
             documentId: d.id,
             type: d.type,
+            title: d.title,
             date: d.date,
             hospitalName: d.hospitalName,
             excerpt: excerpt(d.extractedText),
@@ -264,6 +267,7 @@ ${doc.extractedText.slice(0, 8000)}`,
           sourceDocument: {
             id: doc.id,
             type: doc.type,
+            title: doc.title,
             date: doc.date,
             hospitalName: doc.hospitalName,
           },
@@ -333,7 +337,7 @@ router.post(
           limit: 6,
         });
         contextDocs = recent.map(d => ({
-          id: d.id, type: d.type, status: d.status,
+          id: d.id, type: d.type, status: d.status, title: d.title,
           date: d.date, hospital_name: d.hospitalName,
           doctor_name: d.doctorName, extracted_text: d.extractedText,
           metadata: d.metadata as Record<string, unknown>, score: 1,
@@ -387,6 +391,7 @@ ${recordsBlock || 'No processed records available yet. Upload documents and wait
         .map(d => ({
           documentId: d.id,
           type: d.type,
+          title: d.title,
           date: d.date,
           excerpt: excerpt(d.extracted_text),
         }));

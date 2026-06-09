@@ -14,6 +14,7 @@ export type AuditAction =
   | 'AI_KEY_DELETED'
   | 'upload_start'
   | 'delete_document'
+  | 'rename_document'
   | 'create_profile'
   | 'update_profile'
   | 'delete_profile'

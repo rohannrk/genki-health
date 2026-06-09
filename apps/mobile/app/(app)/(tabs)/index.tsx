@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
 import { documents as docsApi } from '@medcopilot/api-client';
 import { MedicalDocument } from '@medcopilot/types';
 import { formatDate } from '@medcopilot/utils';
@@ -19,11 +20,19 @@ type TypeFilter = typeof TYPE_FILTERS[number];
 
 const TYPE_LABELS: Record<string, string> = {
   all: 'All',
-  prescription: '💊 Rx',
-  lab: '🔬 Lab',
-  imaging: '🩻 Imaging',
-  invoice: '🧾 Invoice',
-  other: '📄 Other',
+  prescription: 'Rx',
+  lab: 'Lab',
+  imaging: 'Imaging',
+  invoice: 'Invoice',
+  other: 'Other',
+};
+
+const TYPE_ICON_NAMES: Record<string, keyof typeof Ionicons.glyphMap> = {
+  prescription: 'medkit-outline',
+  lab: 'flask-outline',
+  imaging: 'scan-outline',
+  invoice: 'receipt-outline',
+  other: 'document-text-outline',
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -104,10 +113,17 @@ export default function TimelineTab() {
             <TouchableOpacity
               key={f}
               onPress={() => setTypeFilter(f)}
-              className={`mr-2 px-3 py-1.5 rounded-full ${
+              className={`mr-2 px-3 py-1.5 rounded-full flex-row items-center gap-1 ${
                 typeFilter === f ? 'bg-emerald-600' : 'bg-slate-100'
               }`}
             >
+              {f !== 'all' && (
+                <Ionicons
+                  name={TYPE_ICON_NAMES[f]}
+                  size={11}
+                  color={typeFilter === f ? '#ffffff' : '#475569'}
+                />
+              )}
               <Text className={`text-xs font-semibold ${typeFilter === f ? 'text-white' : 'text-slate-600'}`}>
                 {TYPE_LABELS[f]}
               </Text>
@@ -128,7 +144,7 @@ export default function TimelineTab() {
         >
           {documents.length === 0 ? (
             <View className="bg-white rounded-2xl border border-slate-200 p-8 items-center my-4">
-              <Text className="text-4xl mb-3">📋</Text>
+              <Ionicons name="documents-outline" size={48} color="#cbd5e1" style={{ marginBottom: 12 }} />
               <Text className="text-slate-500 text-sm font-medium text-center">
                 No documents yet. Tap + to upload your first record.
               </Text>

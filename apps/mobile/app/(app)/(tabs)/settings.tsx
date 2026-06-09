@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { clearToken, clearApiKey } from '../../../src/lib/storage';
@@ -182,7 +183,7 @@ export default function SettingsTab() {
               AI opt-in, data deletion, activity log
             </Text>
           </View>
-          <Text className="text-slate-400">➔</Text>
+          <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -195,7 +196,7 @@ export default function SettingsTab() {
               Time-limited, view-only links &amp; PDF export
             </Text>
           </View>
-          <Text className="text-slate-400">➔</Text>
+          <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
         </TouchableOpacity>
 
         <TouchableOpacity

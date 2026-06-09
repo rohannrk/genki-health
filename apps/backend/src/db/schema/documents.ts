@@ -20,6 +20,8 @@ export const medicalDocuments = pgTable('medical_documents', {
     .references(() => patientProfiles.id, { onDelete: 'cascade' }),
   type: varchar('type', { length: 50 }).notNull().default('other'),
   status: varchar('status', { length: 50 }).notNull().default('uploading'),
+  // User-assigned display name (rename). Null → fall back to type/filename.
+  title: varchar('title', { length: 255 }),
   date: date('date'),
   hospitalName: varchar('hospital_name', { length: 255 }),
   doctorName: varchar('doctor_name', { length: 255 }),

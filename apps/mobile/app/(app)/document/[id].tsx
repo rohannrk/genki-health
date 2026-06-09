@@ -2,17 +2,17 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Modal,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
-import { documents as docsApi, ai as aiApi } from '@medcopilot/api-client';
-import type { SummariseResponse } from '@medcopilot/api-client';
+import { documents as docsApi } from '@medcopilot/api-client';
 import { MedicalDocument } from '@medcopilot/types';
 import { formatDate } from '@medcopilot/utils';
 
@@ -24,11 +24,11 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  prescription: '💊 Prescription',
-  lab: '🔬 Lab Report',
-  imaging: '🩻 Imaging',
-  invoice: '🧾 Invoice',
-  other: '📄 Document',
+  prescription: 'Prescription',
+  lab: 'Lab Report',
+  imaging: 'Imaging',
+  invoice: 'Invoice',
+  other: 'Document',
 };
 
 // Ordered ingestion stages with friendly labels (mirrors backend INGESTION_STAGES).
@@ -50,10 +50,10 @@ export default function DocumentDetailScreen() {
 
   const [doc, setDoc] = useState<MedicalDocument & { downloadUrl?: string } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [summarising, setSummarising] = useState(false);
-  const [summaryResult, setSummaryResult] = useState<SummariseResponse | null>(null);
-  const [showSummary, setShowSummary] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [savingTitle, setSavingTitle] = useState(false);
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -119,19 +119,35 @@ export default function DocumentDetailScreen() {
     }
   };
 
-  const handleSummarise = async () => {
-    if (!id) return;
-    setSummarising(true);
+  const handleSummarise = () => {
+    if (!id || doc?.status !== 'ready') return;
+    // Hand off to the Chat tab, which fetches the summary and shows it inline as
+    // an assistant message. The nonce makes every tap a fresh request.
+    router.push({
+      pathname: '/(app)/(tabs)/chat',
+      params: { summariseDocId: id, summariseNonce: String(Date.now()) },
+    });
+  };
+
+  const startRename = () => {
+    setTitleDraft(doc?.title ?? '');
+    setRenaming(true);
+  };
+
+  const handleSaveTitle = async () => {
+    if (!id || savingTitle) return;
+    setSavingTitle(true);
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       if (!token) return;
-      const result = await aiApi.summarise(id, token);
-      setSummaryResult(result);
-      setShowSummary(true);
+      const next = titleDraft.trim();
+      const updated = await docsApi.rename(id, next.length ? next : null, token);
+      setDoc(prev => (prev ? ({ ...prev, title: updated.title } as any) : prev));
+      setRenaming(false);
     } catch (err: any) {
-      Alert.alert('Summarise failed', err?.message ?? 'Please try again.');
+      Alert.alert('Rename failed', err?.message ?? 'Please try again.');
     } finally {
-      setSummarising(false);
+      setSavingTitle(false);
     }
   };
 
@@ -188,14 +204,51 @@ export default function DocumentDetailScreen() {
     <View className="flex-1 bg-slate-50">
       {/* Header */}
       <View className="bg-white border-b border-slate-200 px-4 pt-14 pb-4">
-        <TouchableOpacity onPress={() => router.back()} className="mb-3">
-          <Text className="text-emerald-600 font-semibold">← Back</Text>
+        <TouchableOpacity onPress={() => router.back()} className="mb-3 flex-row items-center">
+          <Ionicons name="arrow-back" size={18} color="#059669" />
+          <Text className="text-emerald-600 font-semibold ml-1">Back</Text>
         </TouchableOpacity>
         <View className="flex-row items-start justify-between">
           <View className="flex-1 pr-3">
-            <Text className="text-xl font-bold text-slate-900">
-              {TYPE_LABELS[doc.type] ?? '📄 Document'}
-            </Text>
+            {renaming ? (
+              <View>
+                <TextInput
+                  value={titleDraft}
+                  onChangeText={setTitleDraft}
+                  autoFocus
+                  maxLength={255}
+                  placeholder={TYPE_LABELS[doc.type] ?? 'Document name'}
+                  placeholderTextColor="#94a3b8"
+                  returnKeyType="done"
+                  onSubmitEditing={handleSaveTitle}
+                  className="text-xl font-bold text-slate-900 border-b border-emerald-400 pb-1"
+                />
+                <View className="flex-row items-center mt-2">
+                  <TouchableOpacity onPress={handleSaveTitle} disabled={savingTitle} className="mr-4">
+                    {savingTitle ? (
+                      <ActivityIndicator size="small" color="#059669" />
+                    ) : (
+                      <Text className="text-emerald-600 font-semibold text-sm">Save</Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setRenaming(false)} disabled={savingTitle}>
+                    <Text className="text-slate-400 font-semibold text-sm">Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View className="flex-row items-center">
+                <Text className="text-xl font-bold text-slate-900 flex-shrink" numberOfLines={2}>
+                  {doc.title?.trim() || TYPE_LABELS[doc.type] || 'Document'}
+                </Text>
+                <TouchableOpacity onPress={startRename} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} className="ml-2">
+                  <Ionicons name="pencil" size={16} color="#94a3b8" />
+                </TouchableOpacity>
+              </View>
+            )}
+            {doc.title?.trim() && !renaming && (
+              <Text className="text-xs text-slate-400 mt-0.5">{TYPE_LABELS[doc.type] ?? doc.type}</Text>
+            )}
             {doc.hospitalName && (
               <Text className="text-sm text-slate-500 mt-0.5">{doc.hospitalName}</Text>
             )}
@@ -257,9 +310,12 @@ export default function DocumentDetailScreen() {
                 const active = stageIdx === currentIdx;
                 return (
                   <View key={s.key} className="flex-row items-center py-1">
-                    <Text className="text-base mr-2">
-                      {done ? '✅' : active ? '⏳' : '⚪️'}
-                    </Text>
+                    {done
+                      ? <Ionicons name="checkmark-circle" size={18} color="#059669" style={{ marginRight: 8 }} />
+                      : active
+                      ? <Ionicons name="time-outline" size={18} color="#d97706" style={{ marginRight: 8 }} />
+                      : <Ionicons name="ellipse-outline" size={18} color="#cbd5e1" style={{ marginRight: 8 }} />
+                    }
                     <Text
                       className={`text-sm ${
                         active ? 'text-amber-800 font-semibold' : done ? 'text-amber-600' : 'text-amber-400'
@@ -295,7 +351,10 @@ export default function DocumentDetailScreen() {
               {retrying ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text className="text-white font-bold text-sm">↻ Retry processing</Text>
+                <View className="flex-row items-center gap-1.5">
+                  <Ionicons name="refresh" size={16} color="#ffffff" />
+                  <Text className="text-white font-bold text-sm">Retry processing</Text>
+                </View>
               )}
             </TouchableOpacity>
           </View>
@@ -329,18 +388,17 @@ export default function DocumentDetailScreen() {
       <View className="p-4 border-t border-slate-200 gap-3">
         <TouchableOpacity
           onPress={handleSummarise}
-          disabled={summarising || doc.status !== 'ready'}
+          disabled={doc.status !== 'ready'}
           className={`py-3.5 rounded-2xl items-center ${
             doc.status === 'ready' ? 'bg-slate-900' : 'bg-slate-200'
           }`}
         >
-          {summarising ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
+          <View className="flex-row items-center gap-2">
+            <Ionicons name="sparkles" size={18} color={doc.status === 'ready' ? '#ffffff' : '#94a3b8'} />
             <Text className={`font-bold text-base ${doc.status === 'ready' ? 'text-white' : 'text-slate-400'}`}>
-              ✨ Summarise
+              Summarise in Chat
             </Text>
-          )}
+          </View>
         </TouchableOpacity>
 
         <View className="flex-row gap-3">
@@ -360,7 +418,10 @@ export default function DocumentDetailScreen() {
               {retrying ? (
                 <ActivityIndicator color="#475569" />
               ) : (
-                <Text className="text-slate-700 font-semibold text-base">↻ Re-extract</Text>
+                <View className="flex-row items-center gap-1.5">
+                  <Ionicons name="refresh" size={16} color="#334155" />
+                  <Text className="text-slate-700 font-semibold text-base">Re-extract</Text>
+                </View>
               )}
             </TouchableOpacity>
           )}
@@ -370,35 +431,6 @@ export default function DocumentDetailScreen() {
           <Text className="text-red-600 font-semibold text-sm">Delete document</Text>
         </TouchableOpacity>
       </View>
-
-      {/* Summary Modal */}
-      <Modal visible={showSummary} animationType="slide" presentationStyle="pageSheet">
-        <View className="flex-1 bg-white p-6">
-          <View className="flex-row justify-between items-center mb-6">
-            <Text className="text-xl font-bold text-slate-900">Summary</Text>
-            <TouchableOpacity onPress={() => setShowSummary(false)}>
-              <Text className="text-slate-500 font-semibold">Done</Text>
-            </TouchableOpacity>
-          </View>
-
-          {summaryResult && (
-            <>
-              <ScrollView className="flex-1">
-                <Text className="text-slate-800 text-base leading-relaxed">{summaryResult.summary}</Text>
-              </ScrollView>
-
-              <View className="border-t border-slate-200 pt-4 mt-4">
-                <Text className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Source</Text>
-                <Text className="text-sm text-slate-600">
-                  {TYPE_LABELS[summaryResult.sourceDocument.type] ?? summaryResult.sourceDocument.type}
-                  {summaryResult.sourceDocument.date ? ` · ${formatDate(summaryResult.sourceDocument.date)}` : ''}
-                  {summaryResult.sourceDocument.hospitalName ? ` · ${summaryResult.sourceDocument.hospitalName}` : ''}
-                </Text>
-              </View>
-            </>
-          )}
-        </View>
-      </Modal>
     </View>
   );
 }

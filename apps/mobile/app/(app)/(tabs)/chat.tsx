@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,9 @@ import {
   Platform,
   ListRenderItem,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
 import { ai as aiApi, ChatMessage, ChatSource } from '@medcopilot/api-client';
 import { useProfile } from '../../../src/context/ProfileContext';
 
@@ -27,12 +28,17 @@ function SourceCard({ source, onPress }: { source: ChatSource; onPress: () => vo
       className="bg-slate-100 rounded-xl px-3 py-2 mt-1 flex-row items-center"
       activeOpacity={0.7}
     >
-      <Text className="text-slate-400 text-xs mr-2">📎</Text>
+      <Ionicons name="attach-outline" size={14} color="#94a3b8" style={{ marginRight: 8 }} />
       <View className="flex-1">
-        <Text className="text-xs font-semibold text-slate-700 capitalize">{source.type}</Text>
+        <Text
+          className={`text-xs font-semibold text-slate-700 ${source.title?.trim() ? '' : 'capitalize'}`}
+          numberOfLines={1}
+        >
+          {source.title?.trim() || source.type}
+        </Text>
         {source.date && <Text className="text-xs text-slate-400">{source.date}</Text>}
       </View>
-      <Text className="text-slate-400 text-xs">→</Text>
+      <Ionicons name="chevron-forward" size={14} color="#94a3b8" />
     </TouchableOpacity>
   );
 }
@@ -90,6 +96,61 @@ export default function ChatTab() {
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     }
   }, [input, loading, messages, activeProfile, getToken]);
+
+  // Summarise-in-chat: the document detail screen routes here with a doc id +
+  // a one-shot nonce. We fetch the summary and render it as an assistant message.
+  const { summariseDocId, summariseNonce } = useLocalSearchParams<{
+    summariseDocId?: string;
+    summariseNonce?: string;
+  }>();
+  const handledSummaryRef = useRef<string | null>(null);
+
+  const summariseDoc = useCallback(
+    async (documentId: string) => {
+      if (loading) return;
+      const token = await getToken();
+      if (!token) return;
+
+      const userMsg: Message = {
+        id: `u-sum-${Date.now()}`,
+        role: 'user',
+        content: 'Summarise this document for me.',
+      };
+      setMessages(prev => [...prev, userMsg]);
+      setLoading(true);
+      try {
+        const result = await aiApi.summarise(documentId, token);
+        const src = result.sourceDocument;
+        const assistantMsg: Message = {
+          id: `a-sum-${Date.now()}`,
+          role: 'assistant',
+          content: result.summary,
+          sources: [{ documentId: src.id, type: src.type, title: src.title ?? null, date: src.date, excerpt: '' }],
+        };
+        setMessages(prev => [...prev, assistantMsg]);
+      } catch {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: `err-${Date.now()}`,
+            role: 'assistant',
+            content: 'Could not summarise that document. Please try again.',
+          },
+        ]);
+      } finally {
+        setLoading(false);
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      }
+    },
+    [loading, getToken]
+  );
+
+  useEffect(() => {
+    if (summariseDocId && summariseNonce && summariseNonce !== handledSummaryRef.current) {
+      handledSummaryRef.current = summariseNonce;
+      void summariseDoc(summariseDocId);
+    }
+  }, [summariseDocId, summariseNonce, summariseDoc]);
 
   const renderMessage: ListRenderItem<Message> = ({ item }) => {
     const isUser = item.role === 'user';
@@ -172,7 +233,7 @@ export default function ChatTab() {
             input.trim() && !loading && activeProfile ? 'bg-slate-900' : 'bg-slate-200'
           }`}
         >
-          <Text className={`text-sm font-bold ${input.trim() && !loading ? 'text-white' : 'text-slate-400'}`}>↑</Text>
+          <Ionicons name="arrow-up" size={18} color={input.trim() && !loading && activeProfile ? '#ffffff' : '#94a3b8'} />
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

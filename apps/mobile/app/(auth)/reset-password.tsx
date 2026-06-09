@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSignIn } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
 
 const CODE_LENGTH = 6;
 
@@ -111,7 +112,7 @@ export default function ResetPasswordScreen() {
           {/* Header */}
           <View className="items-center mb-10">
             <View className="w-16 h-16 rounded-2xl bg-slate-200 items-center justify-center mb-4">
-              <Text className="text-3xl">🔒</Text>
+              <Ionicons name="lock-closed-outline" size={30} color="#334155" />
             </View>
             <Text className="text-3xl font-extrabold text-slate-900 tracking-tight">
               Reset password

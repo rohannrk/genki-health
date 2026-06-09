@@ -8,6 +8,7 @@ export interface ChatMessage {
 export interface SearchResult {
   documentId: string;
   type: string;
+  title: string | null;
   date: string | null;
   hospitalName: string | null;
   excerpt: string;
@@ -17,6 +18,7 @@ export interface SearchResult {
 export interface ChatSource {
   documentId: string;
   type: string;
+  title: string | null;
   date: string | null;
   excerpt: string;
 }
@@ -29,6 +31,7 @@ export interface ChatResponse {
 export interface SummariseSource {
   id: string;
   type: string;
+  title: string | null;
   date: string | null;
   hospitalName: string | null;
 }

@@ -12,6 +12,7 @@ import {
 import { useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSignUp } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthContext } from '../../src/context/AuthContext';
 
 const CODE_LENGTH = 6;
@@ -149,7 +150,7 @@ export default function VerifyEmailScreen() {
         style={{ position: 'absolute', top: insets.top + 8, left: 16, zIndex: 10 }}
         className="w-10 h-10 rounded-full bg-white border border-slate-200 items-center justify-center"
       >
-        <Text className="text-slate-700 text-xl leading-none">‹</Text>
+        <Ionicons name="arrow-back" size={20} color="#334155" />
       </TouchableOpacity>
 
       <ScrollView
@@ -161,7 +162,7 @@ export default function VerifyEmailScreen() {
           {/* Header */}
           <View className="items-center mb-10">
             <View className="w-16 h-16 rounded-2xl bg-emerald-600 items-center justify-center mb-4 shadow-lg">
-              <Text className="text-3xl">📧</Text>
+              <Ionicons name="mail-outline" size={30} color="#ffffff" />
             </View>
             <Text className="text-3xl font-extrabold text-slate-900 tracking-tight">
               Check your email
