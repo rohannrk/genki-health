@@ -10,16 +10,49 @@ import {
   Platform,
   ListRenderItem,
 } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
-import { ai as aiApi, ChatMessage, ChatSource } from '@medcopilot/api-client';
+import { ai as aiApi, ChatMessage, ChatSource, HistoryMessage } from '@medcopilot/api-client';
 import { useProfile } from '../../../src/context/ProfileContext';
 
-type Message = ChatMessage & {
+type Message = {
   id: string;
+  role: 'user' | 'assistant';
+  content: string;
   sources?: ChatSource[];
 };
+
+const WELCOME: Message = {
+  id: 'welcome',
+  role: 'assistant',
+  content: "Hello! I'm your Medical Copilot. Ask me anything about the patient's records — diagnoses, medications, test results, or follow-ups.",
+};
+
+function cacheFile(profileId: string) {
+  return `${FileSystem.documentDirectory}chat_history_${profileId}.json`;
+}
+
+async function readCache(profileId: string): Promise<Message[] | null> {
+  try {
+    const path = cacheFile(profileId);
+    const info = await FileSystem.getInfoAsync(path);
+    if (!info.exists) return null;
+    const raw = await FileSystem.readAsStringAsync(path);
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+async function writeCache(profileId: string, messages: Message[]): Promise<void> {
+  try {
+    await FileSystem.writeAsStringAsync(cacheFile(profileId), JSON.stringify(messages));
+  } catch {
+    // best-effort
+  }
+}
 
 function SourceCard({ source, onPress }: { source: ChatSource; onPress: () => void }) {
   return (
@@ -43,11 +76,14 @@ function SourceCard({ source, onPress }: { source: ChatSource; onPress: () => vo
   );
 }
 
-const WELCOME: Message = {
-  id: 'welcome',
-  role: 'assistant',
-  content: 'Hello! I\'m your Medical Copilot. Ask me anything about the patient\'s records — diagnoses, medications, test results, or follow-ups.',
-};
+function serverToMessages(rows: HistoryMessage[]): Message[] {
+  return rows.map(r => ({
+    id: r.id,
+    role: r.role,
+    content: r.content,
+    sources: r.sources,
+  }));
+}
 
 export default function ChatTab() {
   const router = useRouter();
@@ -58,9 +94,63 @@ export default function ChatTab() {
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
-  const scrollToEndSoon = useCallback(
+  const scrollToEnd = useCallback(
     () => setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100),
+    []
+  );
+
+  // Load history: AsyncStorage first (instant), then server (authoritative)
+  useEffect(() => {
+    if (!activeProfile) return;
+    const profileId = activeProfile.id;
+
+    async function load() {
+      setHistoryLoading(true);
+      try {
+        // 1. Show local cache immediately
+        const cached = await readCache(profileId);
+        if (cached && cached.length > 0) setMessages([WELCOME, ...cached]);
+
+        // 2. Fetch from server and replace
+        const token = await getToken();
+        if (!token) return;
+        const rows = await aiApi.getHistory(profileId, token);
+        const serverMsgs = serverToMessages(rows);
+        if (serverMsgs.length > 0) {
+          setMessages([WELCOME, ...serverMsgs]);
+          await writeCache(profileId, serverMsgs);
+        }
+      } catch {
+        // silently fall back to whatever we have
+      } finally {
+        setHistoryLoading(false);
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: false }), 50);
+      }
+    }
+
+    void load();
+  }, [activeProfile?.id]);
+
+  const persistMessages = useCallback(
+    async (profileId: string, newMessages: Message[], token: string) => {
+      // Write to local cache immediately
+      const all = newMessages.filter(m => m.id !== 'welcome');
+      await writeCache(profileId, all);
+
+      // Persist new exchange to server (fire-and-forget)
+      const toSave = newMessages.slice(-2).filter(m => m.id !== 'welcome');
+      if (toSave.length > 0) {
+        aiApi
+          .saveHistory(
+            profileId,
+            toSave.map(m => ({ role: m.role, content: m.content, sources: m.sources })),
+            token
+          )
+          .catch(() => {});
+      }
+    },
     []
   );
 
@@ -88,19 +178,22 @@ export default function ChatTab() {
         content: result.response,
         sources: result.sources,
       };
-      setMessages(prev => [...prev, assistantMsg]);
-    } catch (err) {
-      const errMsg: Message = {
-        id: `err-${Date.now()}`,
-        role: 'assistant',
-        content: 'Something went wrong. Please try again.',
-      };
-      setMessages(prev => [...prev, errMsg]);
+
+      setMessages(prev => {
+        const next = [...prev, assistantMsg];
+        void persistMessages(activeProfile.id, next, token);
+        return next;
+      });
+    } catch {
+      setMessages(prev => [
+        ...prev,
+        { id: `err-${Date.now()}`, role: 'assistant', content: 'Something went wrong. Please try again.' },
+      ]);
     } finally {
       setLoading(false);
-      scrollToEndSoon();
+      scrollToEnd();
     }
-  }, [input, loading, messages, activeProfile, getToken, scrollToEndSoon]);
+  }, [input, loading, messages, activeProfile, getToken, scrollToEnd, persistMessages]);
 
   const { summariseDocId, summariseNonce } = useLocalSearchParams<{
     summariseDocId?: string;
@@ -113,11 +206,7 @@ export default function ChatTab() {
       const token = await getToken();
       if (!token) return;
 
-      const userMsg: Message = {
-        id: `u-sum-${Date.now()}`,
-        role: 'user',
-        content: 'Summarise this document for me.',
-      };
+      const userMsg: Message = { id: `u-sum-${Date.now()}`, role: 'user', content: 'Summarise this document for me.' };
       setMessages(prev => [...prev, userMsg]);
       setLoading(true);
       try {
@@ -129,22 +218,22 @@ export default function ChatTab() {
           content: result.summary,
           sources: [{ documentId: src.id, type: src.type, title: src.title ?? null, date: src.date, excerpt: '' }],
         };
-        setMessages(prev => [...prev, assistantMsg]);
+        setMessages(prev => {
+          const next = [...prev, assistantMsg];
+          if (activeProfile) void persistMessages(activeProfile.id, next, token);
+          return next;
+        });
       } catch {
         setMessages(prev => [
           ...prev,
-          {
-            id: `err-${Date.now()}`,
-            role: 'assistant',
-            content: 'Could not summarise that document. Please try again.',
-          },
+          { id: `err-${Date.now()}`, role: 'assistant', content: 'Could not summarise that document. Please try again.' },
         ]);
       } finally {
         setLoading(false);
-        scrollToEndSoon();
+        scrollToEnd();
       }
     },
-    [getToken, scrollToEndSoon]
+    [getToken, scrollToEnd, activeProfile, persistMessages]
   );
 
   useEffect(() => {
@@ -206,12 +295,14 @@ export default function ChatTab() {
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
       />
 
-      {/* Loading indicator */}
-      {loading && (
+      {/* Loading indicators */}
+      {(loading || historyLoading) && (
         <View className="px-4 pb-2 flex-row items-center">
           <View className="bg-white border border-slate-200 rounded-2xl px-4 py-3 flex-row items-center">
             <ActivityIndicator size="small" color="#059669" />
-            <Text className="text-slate-400 text-sm ml-2">Thinking…</Text>
+            <Text className="text-slate-400 text-sm ml-2">
+              {historyLoading ? 'Loading history…' : 'Thinking…'}
+            </Text>
           </View>
         </View>
       )}
@@ -235,7 +326,11 @@ export default function ChatTab() {
             input.trim() && !loading && activeProfile ? 'bg-slate-900' : 'bg-slate-200'
           }`}
         >
-          <Ionicons name="arrow-up" size={18} color={input.trim() && !loading && activeProfile ? '#ffffff' : '#94a3b8'} />
+          <Ionicons
+            name="arrow-up"
+            size={18}
+            color={input.trim() && !loading && activeProfile ? '#ffffff' : '#94a3b8'}
+          />
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

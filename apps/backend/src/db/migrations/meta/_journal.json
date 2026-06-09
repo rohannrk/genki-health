@@ -36,6 +36,13 @@
       "when": 1780960000000,
       "tag": "0004_document_title",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1749470000000,
+      "tag": "0005_chat_history",
+      "breakpoints": true
     }
   ]
 }

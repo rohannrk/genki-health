@@ -1,11 +1,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, asc } from 'drizzle-orm';
 import axios from 'axios';
 import { db } from '../db';
 import { patientProfiles } from '../db/schema/profiles';
 import { medicalDocuments } from '../db/schema/documents';
 import { auditLogs } from '../db/schema/audit';
+import { chatMessages } from '../db/schema/chat';
 import { requireAuth } from '../middleware/auth';
 import { getOrCreateUser } from '../middleware/getOrCreateUser';
 import { validate } from '../middleware/validate';
@@ -394,6 +395,95 @@ ${recordsBlock || 'No processed records available yet. Upload documents and wait
         status: 'success',
         data: { response: result.text, sources },
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// GET /ai/history/:profileId
+// ---------------------------------------------------------------------------
+
+router.get(
+  '/history/:profileId',
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.dbUser!.id;
+      const { profileId } = req.params;
+
+      const profile = await db.query.patientProfiles.findFirst({
+        where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, userId)),
+      });
+      if (!profile) {
+        res.status(404).json({ status: 'error', message: 'Profile not found or access denied' });
+        return;
+      }
+
+      const rows = await db
+        .select()
+        .from(chatMessages)
+        .where(eq(chatMessages.profileId, profileId))
+        .orderBy(asc(chatMessages.createdAt))
+        .limit(200);
+
+      res.status(200).json({
+        status: 'success',
+        data: { messages: rows.map(r => ({ id: r.id, role: r.role, content: r.content, sources: r.sources ?? undefined })) },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// POST /ai/history  — append messages
+// ---------------------------------------------------------------------------
+
+const saveHistorySchema = {
+  body: z.object({
+    profileId: z.string().uuid(),
+    messages: z.array(z.object({
+      role: z.enum(['user', 'assistant']),
+      content: z.string().min(1),
+      sources: z.array(z.object({
+        documentId: z.string(),
+        type: z.string(),
+        title: z.string().nullable(),
+        date: z.string().nullable(),
+        excerpt: z.string(),
+      })).optional(),
+    })).min(1),
+  }),
+};
+
+router.post(
+  '/history',
+  validate(saveHistorySchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.dbUser!.id;
+      const { profileId, messages } = req.body;
+
+      const profile = await db.query.patientProfiles.findFirst({
+        where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, userId)),
+      });
+      if (!profile) {
+        res.status(404).json({ status: 'error', message: 'Profile not found or access denied' });
+        return;
+      }
+
+      await db.insert(chatMessages).values(
+        messages.map((m: { role: string; content: string; sources?: unknown }) => ({
+          profileId,
+          role: m.role,
+          content: m.content,
+          sources: m.sources ?? null,
+        }))
+      );
+
+      res.status(200).json({ status: 'success' });
     } catch (error) {
       next(error);
     }

@@ -1,4 +1,4 @@
-import { post } from './http';
+import { post, get } from './http';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -26,6 +26,13 @@ export interface ChatSource {
 export interface ChatResponse {
   response: string;
   sources: ChatSource[];
+}
+
+export interface HistoryMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  sources?: ChatSource[];
 }
 
 export interface SummariseSource {
@@ -67,5 +74,21 @@ export const ai = {
       token
     );
     return res.data;
+  },
+
+  async getHistory(profileId: string, token: string): Promise<HistoryMessage[]> {
+    const res = await get<{ data: { messages: HistoryMessage[] } }>(
+      `/api/v1/ai/history/${profileId}`,
+      token
+    );
+    return res.data.messages;
+  },
+
+  async saveHistory(
+    profileId: string,
+    messages: Array<{ role: 'user' | 'assistant'; content: string; sources?: ChatSource[] }>,
+    token: string
+  ): Promise<void> {
+    await post('/api/v1/ai/history', { profileId, messages }, token);
   },
 };
