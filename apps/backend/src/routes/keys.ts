@@ -43,14 +43,9 @@ async function ownProfile(profileId: string, ownerId: string) {
   });
 }
 
-/**
- * POST /keys/validate
- * Tests the provided API key with a minimal validation call to the corresponding AI provider.
- * NEVER logs the apiKey.
- */
 router.post(
   '/validate',
-  requireAuth, // Only requires requireAuth as per spec
+  requireAuth,
   validate(validateKeySchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { provider, apiKey } = req.body;
@@ -132,7 +127,6 @@ router.post(
           model,
         });
       } else {
-        // Strip API key from log output if any
         res.status(400).json({
           error: 'Invalid API key',
           reason,
@@ -164,16 +158,12 @@ router.post(
         return;
       }
 
-      // Encrypt key using AES-256-GCM from lib/crypto
       const encrypted = encrypt(apiKey);
-
-      // Save key on the profile
       await db
         .update(patientProfiles)
         .set({ encryptedApiKey: encrypted, aiProvider: provider })
         .where(eq(patientProfiles.id, profileId));
 
-      // Audit Log
       db.insert(auditLogs)
         .values({
           userId,
@@ -219,7 +209,6 @@ router.delete(
         .set({ encryptedApiKey: null, aiProvider: null })
         .where(eq(patientProfiles.id, profileId));
 
-      // Audit Log
       db.insert(auditLogs)
         .values({
           userId,

@@ -13,7 +13,6 @@ export const EMBED_DIMS = env.GEMINI_EMBED_DIMS;
 export async function embedText(text: string, geminiApiKey: string | null | undefined): Promise<number[] | null> {
   if (!geminiApiKey) return null;
 
-  // Truncate to avoid token limits
   const truncated = text.slice(0, 8000);
 
   try {

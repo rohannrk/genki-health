@@ -53,10 +53,6 @@ export type MedicalDocument = {
   createdAt: string;
 };
 
-// ---------------------------------------------------------------------------
-// Phase 5 — Sharing, Export & Compliance
-// ---------------------------------------------------------------------------
-
 export type AuditLog = {
   id: string;
   action: string;

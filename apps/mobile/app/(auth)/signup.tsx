@@ -73,7 +73,6 @@ export default function SignupScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View className="flex-1 justify-center px-6 py-12">
-          {/* Header */}
           <View className="items-center mb-10">
             <View className="w-16 h-16 rounded-2xl bg-emerald-600 items-center justify-center mb-4 shadow-lg">
               <Ionicons name="medkit-outline" size={30} color="#ffffff" />
@@ -84,11 +83,9 @@ export default function SignupScreen() {
             <Text className="text-sm text-slate-500 mt-1">Join your secure clinical workspace</Text>
           </View>
 
-          {/* Card */}
           <View className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
             <Text className="text-xl font-bold text-slate-900 mb-6">Create account</Text>
 
-            {/* Email */}
             <View className="mb-4">
               <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
                 Email address
@@ -108,7 +105,6 @@ export default function SignupScreen() {
               />
             </View>
 
-            {/* Password */}
             <View className="mb-4">
               <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
                 Password
@@ -139,7 +135,6 @@ export default function SignupScreen() {
               </View>
             </View>
 
-            {/* Confirm Password */}
             <View className="mb-6">
               <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
                 Confirm password
@@ -171,14 +166,12 @@ export default function SignupScreen() {
               </View>
             </View>
 
-            {/* Error */}
             {error ? (
               <View className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
                 <Text className="text-red-600 text-sm font-medium">{error}</Text>
               </View>
             ) : null}
 
-            {/* Submit */}
             <TouchableOpacity
               onPress={handleSignUp}
               disabled={isSubmitting}
@@ -195,7 +188,6 @@ export default function SignupScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Sign in link */}
           <View className="flex-row justify-center mt-6">
             <Text className="text-slate-500 text-sm">Already have an account? </Text>
             <TouchableOpacity

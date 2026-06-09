@@ -13,7 +13,6 @@ import { buildFhirBundle } from '../services/fhir';
 
 const router = Router();
 
-// Apply auth protection and user synchronization to all profile endpoints
 router.use(requireAuth);
 router.use(getOrCreateUser);
 
@@ -96,7 +95,6 @@ router.post(
         })
         .returning();
 
-      // Audit Log
       logAudit({
         userId: ownerId,
         action: 'create_profile',
@@ -127,7 +125,6 @@ router.patch(
       const { id } = req.params;
       const updates = req.body;
 
-      // 1. Fetch profile to check ownership
       const profile = await db.query.patientProfiles.findFirst({
         where: eq(patientProfiles.id, id),
       });
@@ -148,14 +145,12 @@ router.patch(
         return;
       }
 
-      // 2. Perform updates
       const [updatedProfile] = await db
         .update(patientProfiles)
         .set(updates)
         .where(eq(patientProfiles.id, id))
         .returning();
 
-      // Audit Log
       logAudit({
         userId: ownerId,
         action: 'update_profile',
@@ -185,7 +180,6 @@ router.delete(
       const ownerId = req.dbUser!.id;
       const { id } = req.params;
 
-      // 1. Fetch profile to check ownership
       const profile = await db.query.patientProfiles.findFirst({
         where: eq(patientProfiles.id, id),
       });
@@ -219,7 +213,7 @@ router.delete(
         return;
       }
 
-      // 2. Delete all of this profile's files from R2 (DB rows cascade on profile delete).
+      // R2 files aren't cascade-deleted by the DB, so delete them explicitly.
       const docs = await db.query.medicalDocuments.findMany({
         where: eq(medicalDocuments.profileId, id),
         columns: { fileKey: true },
@@ -232,15 +226,9 @@ router.delete(
         )
       );
 
-      // 3. Perform deletion (cascades medical_documents rows via FK)
-      await db
-        .delete(patientProfiles)
-        .where(eq(patientProfiles.id, id));
-
-      // Audit Log: action='delete_profile'
+      // Cascade deletes medical_documents rows via FK.
+      await db.delete(patientProfiles).where(eq(patientProfiles.id, id));
       logAudit({ userId: ownerId, action: 'delete_profile', metadata: { profileId: id }, req });
-
-      // Return 204 No Content
       res.status(204).send();
     } catch (error) {
       next(error);

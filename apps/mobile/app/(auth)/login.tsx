@@ -66,7 +66,6 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View className="flex-1 justify-center px-6 py-12">
-          {/* Header */}
           <View className="items-center mb-10">
             <View className="w-16 h-16 rounded-2xl bg-emerald-600 items-center justify-center mb-4 shadow-lg">
               <Ionicons name="medkit-outline" size={30} color="#ffffff" />
@@ -77,11 +76,9 @@ export default function LoginScreen() {
             <Text className="text-sm text-slate-500 mt-1">Secure Clinical Records & Assistant</Text>
           </View>
 
-          {/* Card */}
           <View className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
             <Text className="text-xl font-bold text-slate-900 mb-6">Welcome back</Text>
 
-            {/* Email */}
             <View className="mb-4">
               <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
                 Email address
@@ -100,7 +97,6 @@ export default function LoginScreen() {
               />
             </View>
 
-            {/* Password */}
             <View className="mb-6">
               <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
                 Password
@@ -130,14 +126,12 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            {/* Error */}
             {error ? (
               <View className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
                 <Text className="text-red-600 text-sm font-medium">{error}</Text>
               </View>
             ) : null}
 
-            {/* Sign in button */}
             <TouchableOpacity
               onPress={handleSignIn}
               disabled={isSubmitting}
@@ -153,7 +147,6 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
-            {/* Forgot password */}
             <TouchableOpacity
               onPress={() => router.push('/(auth)/forgot-password')}
               className="items-center mt-4"
@@ -163,7 +156,6 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Sign up link */}
           <View className="flex-row justify-center mt-6">
             <Text className="text-slate-500 text-sm">Don't have an account? </Text>
             <TouchableOpacity

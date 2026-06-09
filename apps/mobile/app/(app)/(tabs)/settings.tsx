@@ -74,7 +74,6 @@ export default function SettingsTab() {
           <Text className="text-sm text-slate-500">Secure HIPAA-compliant clinical environment</Text>
         </View>
 
-        {/* Family Members — switch active, manage each member's AI key, delete */}
         <View className="flex-row justify-between items-center mb-2 px-1">
           <Text className="text-sm font-semibold text-slate-700">Family Members</Text>
           <TouchableOpacity onPress={() => router.push('/(app)/create-profile' as Href)}>
@@ -97,7 +96,6 @@ export default function SettingsTab() {
                   isActive ? 'border-emerald-400' : 'border-slate-200'
                 }`}
               >
-                {/* Row: name + switch */}
                 <TouchableOpacity
                   onPress={() => setActiveProfile(p)}
                   activeOpacity={0.7}
@@ -121,7 +119,6 @@ export default function SettingsTab() {
                   )}
                 </TouchableOpacity>
 
-                {/* Key status */}
                 <View className="flex-row items-center mt-3">
                   <View
                     className={`w-2 h-2 rounded-full mr-2 ${
@@ -139,7 +136,6 @@ export default function SettingsTab() {
                   </Text>
                 </View>
 
-                {/* Actions */}
                 <View className="flex-row gap-2 mt-3">
                   <TouchableOpacity
                     onPress={() => openKeyEditor(p.id)}

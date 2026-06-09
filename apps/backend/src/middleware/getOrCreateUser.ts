@@ -22,13 +22,11 @@ export const getOrCreateUser: RequestHandler = async (req, res, next): Promise<v
   }
 
   try {
-    // 1. Try to find the user by their Clerk ID
     let dbUser = await db.query.users.findFirst({
       where: eq(users.clerkId, clerkUserId),
     });
 
     if (!dbUser) {
-      // 2. Fetch user information from Clerk API to get email
       let email: string | null = null;
       try {
         const clerkUser = await clerkClient.users.getUser(clerkUserId);
@@ -37,7 +35,6 @@ export const getOrCreateUser: RequestHandler = async (req, res, next): Promise<v
         console.warn(`Warning: Could not fetch user email from Clerk for ${clerkUserId}:`, clerkErr);
       }
 
-      // 3. Create a new user record
       const [newUser] = await db
         .insert(users)
         .values({
@@ -47,9 +44,9 @@ export const getOrCreateUser: RequestHandler = async (req, res, next): Promise<v
         })
         .returning();
       dbUser = newUser;
-      req.isNewUser = true; // Created on this request
+      req.isNewUser = true;
     } else {
-      req.isNewUser = false; // Already existed
+      req.isNewUser = false;
     }
 
     req.dbUser = dbUser;

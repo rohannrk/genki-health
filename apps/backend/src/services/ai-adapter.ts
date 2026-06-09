@@ -43,18 +43,12 @@ async function callOpenAI(options: AICompletionOptions): Promise<AIServiceRespon
   const model = options.model ?? DEFAULT_MODELS.openai;
   const messages: any[] = [];
 
-  // Build messages array
   if (options.messages) {
     for (const m of options.messages) {
-      if (m.role === 'system') {
-        messages.push({ role: 'system', content: m.content });
-      } else {
-        messages.push({ role: m.role, content: m.content });
-      }
+      messages.push({ role: m.role, content: m.content });
     }
   }
 
-  // Add vision content if provided
   if (options.imageBase64 && options.imageMimeType) {
     messages.push({
       role: 'user',
@@ -104,7 +98,7 @@ async function callAnthropic(options: AICompletionOptions): Promise<AIServiceRes
   }
 
   if (options.imageBase64 && options.imageMimeType) {
-    const mediaType = options.imageMimeType === 'application/pdf' ? 'application/pdf' : options.imageMimeType as any;
+    const mediaType = options.imageMimeType;
     messages.push({
       role: 'user',
       content: [
@@ -156,7 +150,6 @@ async function callGemini(options: AICompletionOptions): Promise<AIServiceRespon
 
   parts.push({ text: options.prompt });
 
-  // Build contents from message history
   const contents: any[] = [];
   if (options.messages) {
     for (const m of options.messages) {

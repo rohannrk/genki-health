@@ -116,7 +116,6 @@ export default function ByokScreen() {
         Authorization: `Bearer ${token}`,
       };
 
-      // 1. Validate the key actually works with the provider.
       const validateRes = await fetch(`${API_BASE}/api/v1/keys/validate`, {
         method: 'POST',
         headers,
@@ -128,7 +127,6 @@ export default function ByokScreen() {
         return;
       }
 
-      // 2. Encrypt + store the key server-side for this profile.
       const saveRes = await fetch(`${API_BASE}/api/v1/keys/save`, {
         method: 'POST',
         headers,
@@ -140,7 +138,6 @@ export default function ByokScreen() {
         return;
       }
 
-      // 3. Reflect the new state, wipe the key from memory, and return.
       setSavedLast4(trimmedKey.slice(-4));
       setApiKey('');
       await refreshProfiles();
@@ -168,7 +165,6 @@ export default function ByokScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View className="flex-1 justify-center px-6 py-12">
-          {/* Header */}
           <View className="mb-8">
             <Text className="text-3xl font-extrabold text-slate-900 tracking-tight">
               Connect AI
@@ -180,7 +176,6 @@ export default function ByokScreen() {
             </Text>
           </View>
 
-          {/* Provider cards */}
           <View className="flex-row gap-x-3 mb-6">
             {PROVIDERS.map(p => {
               const selected = p.id === selectedId;
@@ -224,7 +219,6 @@ export default function ByokScreen() {
             })}
           </View>
 
-          {/* API key input */}
           <View className="mb-2">
             <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
               {provider.name} API key
@@ -260,7 +254,6 @@ export default function ByokScreen() {
             </View>
           </View>
 
-          {/* Key help link */}
           <TouchableOpacity
             onPress={handleOpenKeyHelp}
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
@@ -271,14 +264,12 @@ export default function ByokScreen() {
             <Text className="text-teal-600 text-sm font-medium">Where do I get my key?</Text>
           </TouchableOpacity>
 
-          {/* Error */}
           {error ? (
             <View className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
               <Text className="text-red-600 text-sm font-medium">{error}</Text>
             </View>
           ) : null}
 
-          {/* Validate & Save */}
           <TouchableOpacity
             onPress={handleValidateAndSave}
             disabled={isSaving || isSaved}
@@ -296,7 +287,6 @@ export default function ByokScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Cancel */}
           <TouchableOpacity
             onPress={handleSkip}
             disabled={isSaving}

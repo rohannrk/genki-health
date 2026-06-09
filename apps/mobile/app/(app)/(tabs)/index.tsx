@@ -14,6 +14,7 @@ import { documents as docsApi } from '@medcopilot/api-client';
 import { MedicalDocument } from '@medcopilot/types';
 import { formatDate } from '@medcopilot/utils';
 import { useProfile } from '../../../src/context/ProfileContext';
+import { DOC_TYPE_ICON_NAMES } from '../../../src/lib/docTypeUtils';
 
 const TYPE_FILTERS = ['all', 'prescription', 'lab', 'imaging', 'invoice', 'other'] as const;
 type TypeFilter = typeof TYPE_FILTERS[number];
@@ -25,14 +26,6 @@ const TYPE_LABELS: Record<string, string> = {
   imaging: 'Imaging',
   invoice: 'Invoice',
   other: 'Other',
-};
-
-const TYPE_ICON_NAMES: Record<string, keyof typeof Ionicons.glyphMap> = {
-  prescription: 'medkit-outline',
-  lab: 'flask-outline',
-  imaging: 'scan-outline',
-  invoice: 'receipt-outline',
-  other: 'document-text-outline',
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -119,7 +112,7 @@ export default function TimelineTab() {
             >
               {f !== 'all' && (
                 <Ionicons
-                  name={TYPE_ICON_NAMES[f]}
+                  name={DOC_TYPE_ICON_NAMES[f]}
                   size={11}
                   color={typeFilter === f ? '#ffffff' : '#475569'}
                 />

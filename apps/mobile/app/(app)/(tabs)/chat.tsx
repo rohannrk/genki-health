@@ -59,6 +59,11 @@ export default function ChatTab() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const scrollToEndSoon = useCallback(
+    () => setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100),
+    []
+  );
+
   const sendMessage = useCallback(async () => {
     const text = input.trim();
     if (!text || loading || !activeProfile) return;
@@ -93,12 +98,10 @@ export default function ChatTab() {
       setMessages(prev => [...prev, errMsg]);
     } finally {
       setLoading(false);
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      scrollToEndSoon();
     }
-  }, [input, loading, messages, activeProfile, getToken]);
+  }, [input, loading, messages, activeProfile, getToken, scrollToEndSoon]);
 
-  // Summarise-in-chat: the document detail screen routes here with a doc id +
-  // a one-shot nonce. We fetch the summary and render it as an assistant message.
   const { summariseDocId, summariseNonce } = useLocalSearchParams<{
     summariseDocId?: string;
     summariseNonce?: string;
@@ -107,7 +110,6 @@ export default function ChatTab() {
 
   const summariseDoc = useCallback(
     async (documentId: string) => {
-      if (loading) return;
       const token = await getToken();
       if (!token) return;
 
@@ -139,10 +141,10 @@ export default function ChatTab() {
         ]);
       } finally {
         setLoading(false);
-        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+        scrollToEndSoon();
       }
     },
-    [loading, getToken]
+    [getToken, scrollToEndSoon]
   );
 
   useEffect(() => {

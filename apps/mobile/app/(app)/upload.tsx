@@ -48,7 +48,7 @@ export default function UploadScreen() {
     setPickedFile({
       uri: asset.uri,
       name: asset.name,
-      mimeType: (asset.mimeType as any) ?? 'application/pdf',
+      mimeType: (asset.mimeType as PickedFile['mimeType']) ?? 'application/pdf',
       size: asset.size ?? 0,
     });
   };
@@ -77,7 +77,6 @@ export default function UploadScreen() {
       const token = await getToken();
       if (!token) throw new Error('Not authenticated');
 
-      // 1. Get presigned upload URL
       const { documentId, uploadUrl } = await docsApi.getUploadUrl(
         selectedProfile.id,
         pickedFile.name,
@@ -86,10 +85,8 @@ export default function UploadScreen() {
         token
       );
 
-      // 2. Upload directly to R2 with progress
       await docsApi.uploadToStorage(uploadUrl, pickedFile.uri, pickedFile.mimeType, setProgress);
 
-      // 3. Confirm upload → triggers ingestion pipeline
       await docsApi.confirmUpload(documentId, token);
 
       Alert.alert('Upload complete', 'Your document is being processed. It will appear in the timeline shortly.');
@@ -103,7 +100,6 @@ export default function UploadScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      {/* Header */}
       <View className="flex-row items-center px-4 pt-14 pb-4 border-b border-slate-200">
         <TouchableOpacity onPress={() => router.back()} className="mr-4 p-1">
           <Ionicons name="close" size={22} color="#64748b" />
@@ -112,7 +108,6 @@ export default function UploadScreen() {
       </View>
 
       <ScrollView className="flex-1 p-4">
-        {/* Profile selector */}
         <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Patient</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
           {profiles.map(p => (
@@ -132,7 +127,6 @@ export default function UploadScreen() {
           ))}
         </ScrollView>
 
-        {/* Pick file */}
         <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Document</Text>
         <View className="flex-row gap-3 mb-6">
           <TouchableOpacity
@@ -154,7 +148,6 @@ export default function UploadScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Preview */}
         {pickedFile && (
           <View className="bg-slate-50 rounded-2xl border border-slate-200 p-4 mb-6">
             <Text className="text-sm font-bold text-slate-800" numberOfLines={1}>{pickedFile.name}</Text>
@@ -176,7 +169,6 @@ export default function UploadScreen() {
         )}
       </ScrollView>
 
-      {/* Upload button */}
       <View className="p-4 border-t border-slate-200">
         <TouchableOpacity
           onPress={handleUpload}

@@ -39,7 +39,7 @@ export const documents = {
       { profileId, filename, contentType, fileSize },
       token
     );
-    return (res as any).data;
+    return res.data;
   },
 
   async confirmUpload(documentId: string, token: string): Promise<{ documentId: string; status: string }> {
@@ -48,7 +48,7 @@ export const documents = {
       {},
       token
     );
-    return (res as any).data;
+    return res.data;
   },
 
   async list(profileId: string, token: string, opts: DocumentListOptions = {}): Promise<DocumentListResponse> {
@@ -58,12 +58,12 @@ export const documents = {
     if (opts.limit != null) params.set('limit', String(opts.limit));
     if (opts.offset != null) params.set('offset', String(opts.offset));
     const res = await get<{ data: DocumentListResponse }>(`/api/v1/documents?${params}`, token);
-    return (res as any).data;
+    return res.data;
   },
 
   async get(documentId: string, token: string): Promise<MedicalDocument> {
     const res = await get<{ data: MedicalDocument }>(`/api/v1/documents/${documentId}`, token);
-    return (res as any).data;
+    return res.data;
   },
 
   async delete(documentId: string, token: string): Promise<void> {
@@ -77,7 +77,7 @@ export const documents = {
       { title },
       token
     );
-    return (res as any).data;
+    return res.data;
   },
 
   async retry(documentId: string, token: string): Promise<{ documentId: string; status: string }> {
@@ -86,7 +86,7 @@ export const documents = {
       {},
       token
     );
-    return (res as any).data;
+    return res.data;
   },
 
   /** Compile selected records into a PDF; returns a presigned download URL. */
@@ -96,7 +96,7 @@ export const documents = {
       data,
       token
     );
-    return (res as any).data.downloadUrl;
+    return res.data.downloadUrl;
   },
 
   /** Upload a file directly to R2 via presigned URL, reporting progress */

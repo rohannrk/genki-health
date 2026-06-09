@@ -2,7 +2,6 @@ import crypto from 'crypto';
 import { env } from '../env';
 
 const getKeyBuffer = (): Buffer => {
-  // Pad or slice the key to ensure it is exactly 32 bytes for AES-256
   return Buffer.from(env.ENCRYPTION_KEY.padEnd(32).slice(0, 32));
 };
 

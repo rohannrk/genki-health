@@ -78,7 +78,6 @@ export async function processDocument(documentId: string): Promise<void> {
 }
 
 async function runIngestion(documentId: string): Promise<void> {
-  // 1. Load document
   const doc = await db.query.medicalDocuments.findFirst({
     where: eq(medicalDocuments.id, documentId),
   });
@@ -89,7 +88,6 @@ async function runIngestion(documentId: string): Promise<void> {
 
   await setStage(documentId, 'queued');
 
-  // 2. Get owner's API key
   const profile = await db.query.patientProfiles.findFirst({
     where: eq(patientProfiles.id, doc.profileId),
   });
@@ -126,7 +124,6 @@ async function runIngestion(documentId: string): Promise<void> {
     return;
   }
 
-  // 3. Fetch file as base64
   await setStage(documentId, 'fetching');
   const file = await fetchFileAsBase64(doc.fileKey);
   if (!file) {
@@ -139,7 +136,6 @@ async function runIngestion(documentId: string): Promise<void> {
   let docType: DocType = 'other';
   let meta: ExtractedMetadata = {};
 
-  // 4. Single multimodal call: OCR + classify + metadata in one structured response.
   await setStage(documentId, 'analyzing');
   try {
     const result = await generateAICompletion({
@@ -184,12 +180,10 @@ Do not omit any text from the document in the "text" field. Use null where a fie
     return;
   }
 
-  // 5. Embed (uses Gemini key regardless of primary provider)
   await setStage(documentId, 'embedding');
-  const geminiKey = provider === 'gemini' ? apiKey : null;
+  const geminiKey = provider === 'gemini' ? apiKey : null; // embedding always uses Gemini
   const embedding = await embedText(extractedText, geminiKey);
 
-  // 8. Update document record
   const existingMeta = (doc.metadata as Record<string, unknown>) || {};
   await db
     .update(medicalDocuments)

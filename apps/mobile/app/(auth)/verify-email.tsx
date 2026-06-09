@@ -141,7 +141,6 @@ export default function VerifyEmailScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-slate-50"
     >
-      {/* Back button */}
       <TouchableOpacity
         onPress={handleBack}
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -159,7 +158,6 @@ export default function VerifyEmailScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View className="flex-1 justify-center px-6 py-12">
-          {/* Header */}
           <View className="items-center mb-10">
             <View className="w-16 h-16 rounded-2xl bg-emerald-600 items-center justify-center mb-4 shadow-lg">
               <Ionicons name="mail-outline" size={30} color="#ffffff" />
@@ -173,7 +171,6 @@ export default function VerifyEmailScreen() {
             </Text>
           </View>
 
-          {/* OTP Inputs */}
           <View className="flex-row justify-center gap-x-3 mb-8">
             {Array.from({ length: CODE_LENGTH }).map((_, index) => (
               <TextInput
@@ -205,14 +202,12 @@ export default function VerifyEmailScreen() {
             ))}
           </View>
 
-          {/* Error */}
           {error ? (
             <View className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4 mx-0">
               <Text className="text-red-600 text-sm font-medium text-center">{error}</Text>
             </View>
           ) : null}
 
-          {/* Loading indicator */}
           {isSubmitting && (
             <View className="items-center mb-4">
               <ActivityIndicator color="#10b981" />
@@ -220,7 +215,6 @@ export default function VerifyEmailScreen() {
             </View>
           )}
 
-          {/* Resend */}
           <View className="items-center mt-2">
             {cooldown > 0 ? (
               <Text className="text-slate-400 text-sm">

@@ -13,14 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ai as aiApi, SearchResult } from '@medcopilot/api-client';
 import { useProfile } from '../../../src/context/ProfileContext';
 import { formatDate } from '@medcopilot/utils';
-
-const TYPE_ICON_NAMES: Record<string, keyof typeof Ionicons.glyphMap> = {
-  prescription: 'medkit-outline',
-  lab: 'flask-outline',
-  imaging: 'scan-outline',
-  invoice: 'receipt-outline',
-  other: 'document-text-outline',
-};
+import { DOC_TYPE_ICON_NAMES } from '../../../src/lib/docTypeUtils';
 
 export default function SearchTab() {
   const router = useRouter();
@@ -108,7 +101,7 @@ export default function SearchTab() {
             <View className="flex-row items-center justify-between mb-2">
               <View className="flex-row items-center">
                 <Ionicons
-                  name={TYPE_ICON_NAMES[r.type] ?? 'document-text-outline'}
+                  name={DOC_TYPE_ICON_NAMES[r.type] ?? 'document-text-outline'}
                   size={16}
                   color="#475569"
                   style={{ marginRight: 8 }}

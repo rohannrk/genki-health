@@ -26,7 +26,6 @@ const router = Router();
 router.use(requireAuth);
 router.use(getOrCreateUser);
 
-// Validation Schemas
 const uploadUrlSchema = {
   body: z.object({
     profileId: z.string().uuid('Invalid profile ID format'),
@@ -75,9 +74,8 @@ const renameSchema = {
   }),
 };
 
-// Response Formatter (strips internal fileKey)
-const formatDocument = async (doc: MedicalDocument) => {
-  const downloadUrl = await getPresignedDownloadUrl(doc.fileKey);
+const formatDocument = async (doc: MedicalDocument, { includeDownloadUrl = true } = {}) => {
+  const downloadUrl = includeDownloadUrl ? await getPresignedDownloadUrl(doc.fileKey) : undefined;
   return {
     id: doc.id,
     profileId: doc.profileId,
@@ -87,17 +85,13 @@ const formatDocument = async (doc: MedicalDocument) => {
     date: doc.date,
     hospitalName: doc.hospitalName,
     doctorName: doc.doctorName,
-    downloadUrl,
+    ...(downloadUrl !== undefined && { downloadUrl }),
     extractedText: doc.extractedText,
     metadata: doc.metadata as Record<string, unknown>,
     createdAt: doc.createdAt.toISOString(),
   };
 };
 
-/**
- * Helper to verify ownership of a document.
- * Returns the document if user has ownership, otherwise throws an error or returns null.
- */
 const verifyDocumentOwnership = async (
   documentId: string,
   userId: string
@@ -130,7 +124,6 @@ router.post(
       const userId = req.dbUser!.id;
       const { profileId, filename, contentType, fileSize } = req.body;
 
-      // 1. Verify that patient profile exists and belongs to current user
       const profile = await db.query.patientProfiles.findFirst({
         where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, userId)),
       });
@@ -143,13 +136,9 @@ router.post(
         return;
       }
 
-      // 2. Generate a secure, unique R2 file key
       const fileKey = generateFileKey(profileId, filename);
-
-      // 3. Generate presigned upload URL (expires in 5 minutes)
       const uploadUrl = await getPresignedUploadUrl(fileKey, contentType);
 
-      // 4. Create document record in DB
       const [newDoc] = await db
         .insert(medicalDocuments)
         .values({
@@ -161,10 +150,8 @@ router.post(
         })
         .returning();
 
-      // 5. Log audit
       logAudit({ userId, action: 'upload_start', documentIds: [newDoc.id], req });
 
-      // 6. Return response
       res.status(200).json({
         status: 'success',
         data: {
@@ -251,7 +238,6 @@ router.post(
       const userId = req.dbUser!.id;
       const { documentId } = req.params;
 
-      // 1. Fetch document and verify ownership
       const doc = await verifyDocumentOwnership(documentId, userId);
       if (!doc) {
         res.status(403).json({
@@ -261,7 +247,6 @@ router.post(
         return;
       }
 
-      // 2. Verify file exists in R2
       const exists = await fileExists(doc.fileKey);
       if (!exists) {
         res.status(400).json({
@@ -271,7 +256,6 @@ router.post(
         return;
       }
 
-      // 3. Set status to 'processing' and kick off ingestion pipeline
       const [updatedDoc] = await db
         .update(medicalDocuments)
         .set({ status: 'processing' })
@@ -349,9 +333,10 @@ router.get(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = req.dbUser!.id;
-      const { profileId, type, status, limit, offset } = req.query as any;
+      const { profileId, type, status, limit, offset } = req.query as {
+        profileId: string; type?: string; status?: string; limit?: number; offset?: number;
+      };
 
-      // 1. Verify profile ownership
       const profile = await db.query.patientProfiles.findFirst({
         where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, userId)),
       });
@@ -364,7 +349,6 @@ router.get(
         return;
       }
 
-      // Build query filters
       const filters = [eq(medicalDocuments.profileId, profileId)];
       if (type) {
         filters.push(eq(medicalDocuments.type, type));
@@ -373,7 +357,6 @@ router.get(
         filters.push(eq(medicalDocuments.status, status));
       }
 
-      // 2. Query documents
       const docs = await db.query.medicalDocuments.findMany({
         where: and(...filters),
         orderBy: desc(medicalDocuments.createdAt),
@@ -381,17 +364,14 @@ router.get(
         offset,
       });
 
-      // Query total count of matching documents
       const totalResult = await db
         .select({ count: count() })
         .from(medicalDocuments)
         .where(and(...filters));
       const total = totalResult[0]?.count || 0;
 
-      // 3. Format and attach presigned download URLs
       const documentsList = await Promise.all(docs.map((doc) => formatDocument(doc)));
 
-      // 4. Return results
       res.status(200).json({
         status: 'success',
         data: {
@@ -419,7 +399,6 @@ router.get(
       const userId = req.dbUser!.id;
       const { documentId } = req.params;
 
-      // 1. Verify ownership
       const doc = await verifyDocumentOwnership(documentId, userId);
       if (!doc) {
         res.status(403).json({
@@ -429,10 +408,8 @@ router.get(
         return;
       }
 
-      // 2. Attach presigned download URL & Format
       const response = await formatDocument(doc);
 
-      // 3. Return response
       res.status(200).json({
         status: 'success',
         data: response,
@@ -486,19 +463,7 @@ router.patch(
 
       res.status(200).json({
         status: 'success',
-        data: {
-          id: updated.id,
-          profileId: updated.profileId,
-          type: updated.type,
-          status: updated.status,
-          title: updated.title,
-          date: updated.date,
-          hospitalName: updated.hospitalName,
-          doctorName: updated.doctorName,
-          extractedText: updated.extractedText,
-          metadata: updated.metadata,
-          createdAt: updated.createdAt,
-        },
+        data: await formatDocument(updated, { includeDownloadUrl: false }),
       });
     } catch (error) {
       next(error);
@@ -518,7 +483,6 @@ router.delete(
       const userId = req.dbUser!.id;
       const { documentId } = req.params;
 
-      // 1. Verify ownership
       const doc = await verifyDocumentOwnership(documentId, userId);
       if (!doc) {
         res.status(403).json({
@@ -528,20 +492,14 @@ router.delete(
         return;
       }
 
-      // 2. Delete file from R2
       try {
         await deleteFile(doc.fileKey);
       } catch (r2Error) {
         console.error(`Warning: Failed to delete file key ${doc.fileKey} from R2:`, r2Error);
       }
 
-      // 3. Delete database record
       await db.delete(medicalDocuments).where(eq(medicalDocuments.id, documentId));
-
-      // 4. Log audit: action='delete_document'
       logAudit({ userId, action: 'delete_document', documentIds: [documentId], req });
-
-      // 5. Return 204
       res.status(204).send();
     } catch (error) {
       next(error);

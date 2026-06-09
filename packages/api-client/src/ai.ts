@@ -48,7 +48,7 @@ export const ai = {
       { profileId, messages },
       token
     );
-    return (res as any).data;
+    return res.data;
   },
 
   async search(profileId: string, query: string, token: string): Promise<SearchResult[]> {
@@ -57,7 +57,7 @@ export const ai = {
       { profileId, query },
       token
     );
-    return (res as any).data.results;
+    return res.data.results;
   },
 
   async summarise(documentId: string, token: string): Promise<SummariseResponse> {
@@ -66,6 +66,6 @@ export const ai = {
       { documentId },
       token
     );
-    return (res as any).data;
+    return res.data;
   },
 };

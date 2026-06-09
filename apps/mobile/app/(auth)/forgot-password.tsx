@@ -61,7 +61,6 @@ export default function ForgotPasswordScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View className="flex-1 justify-center px-6 py-12">
-          {/* Header */}
           <View className="items-center mb-10">
             <View className="w-16 h-16 rounded-2xl bg-slate-200 items-center justify-center mb-4">
               <Ionicons name="key-outline" size={30} color="#334155" />
@@ -74,7 +73,6 @@ export default function ForgotPasswordScreen() {
             </Text>
           </View>
 
-          {/* Card */}
           <View className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
             <View className="mb-6">
               <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
@@ -96,7 +94,6 @@ export default function ForgotPasswordScreen() {
               />
             </View>
 
-            {/* Error */}
             {error ? (
               <View className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
                 <Text className="text-red-600 text-sm font-medium">{error}</Text>
@@ -119,7 +116,6 @@ export default function ForgotPasswordScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Back to login */}
           <View className="flex-row justify-center mt-6">
             <TouchableOpacity
               onPress={() => router.back()}

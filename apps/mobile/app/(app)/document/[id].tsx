@@ -38,7 +38,6 @@ const STAGES: { key: string; label: string }[] = [
   { key: 'embedding', label: 'Indexing for search' },
 ];
 const STAGE_ORDER = ['queued', ...STAGES.map(s => s.key), 'done'];
-// Rough per-stage seconds, used to estimate remaining time.
 const EST_TOTAL_SECONDS = 20;
 
 export default function DocumentDetailScreen() {
@@ -64,10 +63,9 @@ export default function DocumentDetailScreen() {
         const token = await getTokenRef.current();
         if (!token || !id) return;
         const data = await docsApi.get(id, token);
-        setDoc(data as any);
+        setDoc(data);
 
-        // Poll while processing
-        if ((data as any).status === 'processing' || (data as any).status === 'uploading') {
+        if (data.status === 'processing' || data.status === 'uploading') {
           timer = setTimeout(fetchDoc, 3000);
         }
       } catch (err) {
@@ -100,14 +98,14 @@ export default function DocumentDetailScreen() {
       const token = await getTokenRef.current();
       if (!token) return;
       await docsApi.retry(id, token);
-      setDoc(prev => (prev ? ({ ...prev, status: 'processing' } as any) : prev));
+      setDoc(prev => (prev ? { ...prev, status: 'processing' as const } : prev));
       // Resume polling
       const poll = async () => {
         const t = await getTokenRef.current();
         if (!t) return;
         const data = await docsApi.get(id, t);
-        setDoc(data as any);
-        if ((data as any).status === 'processing' || (data as any).status === 'uploading') {
+        setDoc(data);
+        if (data.status === 'processing' || data.status === 'uploading') {
           setTimeout(poll, 3000);
         }
       };
@@ -121,8 +119,6 @@ export default function DocumentDetailScreen() {
 
   const handleSummarise = () => {
     if (!id || doc?.status !== 'ready') return;
-    // Hand off to the Chat tab, which fetches the summary and shows it inline as
-    // an assistant message. The nonce makes every tap a fresh request.
     router.push({
       pathname: '/(app)/(tabs)/chat',
       params: { summariseDocId: id, summariseNonce: String(Date.now()) },
@@ -141,8 +137,8 @@ export default function DocumentDetailScreen() {
       const token = await getTokenRef.current();
       if (!token) return;
       const next = titleDraft.trim();
-      const updated = await docsApi.rename(id, next.length ? next : null, token);
-      setDoc(prev => (prev ? ({ ...prev, title: updated.title } as any) : prev));
+      const updated = await docsApi.rename(id, next || null, token);
+      setDoc(prev => (prev ? { ...prev, title: updated.title } : prev));
       setRenaming(false);
     } catch (err: any) {
       Alert.alert('Rename failed', err?.message ?? 'Please try again.');
@@ -177,7 +173,7 @@ export default function DocumentDetailScreen() {
   };
 
   const handleViewOriginal = () => {
-    const url = (doc as any)?.downloadUrl;
+    const url = doc.downloadUrl;
     if (url) Linking.openURL(url);
   };
 
@@ -202,7 +198,6 @@ export default function DocumentDetailScreen() {
 
   return (
     <View className="flex-1 bg-slate-50">
-      {/* Header */}
       <View className="bg-white border-b border-slate-200 px-4 pt-14 pb-4">
         <TouchableOpacity onPress={() => router.back()} className="mb-3 flex-row items-center">
           <Ionicons name="arrow-back" size={18} color="#059669" />
@@ -268,7 +263,6 @@ export default function DocumentDetailScreen() {
       </View>
 
       <ScrollView className="flex-1 p-4">
-        {/* Metadata */}
         {(metadata.diagnosis || metadata.treatment) && (
           <View className="bg-white rounded-2xl border border-slate-200 p-4 mb-4">
             <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
@@ -289,7 +283,6 @@ export default function DocumentDetailScreen() {
           </View>
         )}
 
-        {/* Processing state — stepper + ETA */}
         {(doc.status === 'processing' || doc.status === 'uploading') && (() => {
           const stage = (metadata.processingStage as string) || 'queued';
           const currentIdx = Math.max(0, STAGE_ORDER.indexOf(stage));
@@ -336,7 +329,6 @@ export default function DocumentDetailScreen() {
           );
         })()}
 
-        {/* Error state — retry */}
         {doc.status === 'error' && (
           <View className="bg-red-50 rounded-2xl border border-red-200 p-4 mb-4">
             <Text className="text-red-700 text-sm font-bold mb-1">Processing failed</Text>
@@ -360,14 +352,12 @@ export default function DocumentDetailScreen() {
           </View>
         )}
 
-        {/* Note (e.g. no AI key) */}
         {doc.status === 'ready' && metadata.processingNote ? (
           <View className="bg-blue-50 rounded-2xl border border-blue-200 p-4 mb-4">
             <Text className="text-blue-700 text-sm">{metadata.processingNote as string}</Text>
           </View>
         ) : null}
 
-        {/* Extracted text */}
         {doc.extractedText ? (
           <View className="bg-white rounded-2xl border border-slate-200 p-4 mb-4">
             <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
@@ -384,7 +374,6 @@ export default function DocumentDetailScreen() {
         ) : null}
       </ScrollView>
 
-      {/* Action buttons */}
       <View className="p-4 border-t border-slate-200 gap-3">
         <TouchableOpacity
           onPress={handleSummarise}

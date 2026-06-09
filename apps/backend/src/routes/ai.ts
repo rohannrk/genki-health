@@ -61,7 +61,6 @@ function getDecryptedKey(
   }
 }
 
-/** Fetch top-k similar docs from pgvector for a given profile */
 async function retrieveSimilarDocs(profileId: string, queryVec: number[], limit = 5) {
   const vecLiteral = `[${queryVec.join(',')}]`;
   const rows = await db.execute(
@@ -93,7 +92,6 @@ function excerpt(text: string | null, maxLen = 300): string {
   return text.length <= maxLen ? text : text.slice(0, maxLen) + '…';
 }
 
-/** Tavily web search — returns a short context snippet or null if not configured / fails. */
 async function webSearch(query: string): Promise<string | null> {
   if (!env.TAVILY_API_KEY) return null;
   try {
@@ -300,7 +298,7 @@ router.post(
       }
 
       const creds = getDecryptedKey(profile);
-      const lastUserMessage: string = messages.filter((m: any) => m.role === 'user').at(-1)?.content ?? '';
+      const lastUserMessage: string = messages.filter((m: { role: string }) => m.role === 'user').at(-1)?.content ?? '';
 
       db.insert(auditLogs).values({
         userId, action: 'AI_CHAT_INVOKED',
@@ -320,7 +318,6 @@ router.post(
         return;
       }
 
-      // RAG: embed query → retrieve top-5 docs + optional web search (run in parallel)
       const geminiKey = creds.provider === 'gemini' ? creds.apiKey : null;
       const [queryVec, webContext] = await Promise.all([
         embedText(lastUserMessage, geminiKey),
@@ -331,7 +328,6 @@ router.post(
       if (queryVec) {
         contextDocs = await retrieveSimilarDocs(profileId, queryVec, 6);
       } else {
-        // Fallback: use most recent 6 ready docs
         const recent = await db.query.medicalDocuments.findMany({
           where: and(eq(medicalDocuments.profileId, profileId), eq(medicalDocuments.status, 'ready')),
           limit: 6,
@@ -344,7 +340,6 @@ router.post(
         }));
       }
 
-      // Build system prompt with full context
       const recordsBlock = contextDocs
         .filter(d => d.extracted_text)
         .map(d => {
@@ -384,7 +379,6 @@ ${recordsBlock || 'No processed records available yet. Upload documents and wait
         ],
       });
 
-      // Extract cited doc IDs from response
       const citedIds = [...result.text.matchAll(/\[Doc:\s*([a-f0-9-]{36})\]/g)].map(m => m[1]);
       const sources = contextDocs
         .filter(d => citedIds.includes(d.id))

@@ -17,7 +17,6 @@ async function parse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     throw new Error(`API error: ${response.status} ${response.statusText}`);
   }
-  // 204 No Content (and other empty bodies) have nothing to parse.
   if (response.status === 204) {
     return undefined as T;
   }

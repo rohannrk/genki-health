@@ -6,7 +6,6 @@ import { auditLogs } from '../db/schema/audit';
 
 const router = Router();
 
-// Apply auth protection and user injection to all auth routes
 router.use(requireAuth);
 router.use(getOrCreateUser);
 
@@ -19,7 +18,6 @@ router.post('/sync', async (req: Request, res: Response, next: NextFunction): Pr
     const user = req.dbUser!;
     const isNewUser = req.isNewUser || false;
 
-    // Log to audit log: action='login'
     db.insert(auditLogs)
       .values({
         userId: user.id,
@@ -30,7 +28,6 @@ router.post('/sync', async (req: Request, res: Response, next: NextFunction): Pr
       })
       .catch((err) => console.error('Audit failed:', err));
 
-    // Return user information with hasApiKey flag instead of the raw encrypted key
     res.status(200).json({
       status: 'success',
       data: {
