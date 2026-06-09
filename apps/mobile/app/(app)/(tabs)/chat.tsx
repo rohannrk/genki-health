@@ -13,6 +13,7 @@ import * as FileSystem from 'expo-file-system';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
+import Markdown from 'react-native-markdown-display';
 import { ai as aiApi, ChatMessage, ChatSource, HistoryMessage } from '@medcopilot/api-client';
 import { useProfile } from '../../../src/context/ProfileContext';
 
@@ -90,9 +91,11 @@ const MessageItem = memo(function MessageItem({
           isUser ? 'bg-slate-900 rounded-tr-sm' : 'bg-white border border-slate-200 rounded-tl-sm'
         }`}
       >
-        <Text className={`text-sm leading-relaxed ${isUser ? 'text-white' : 'text-slate-800'}`}>
-          {item.content}
-        </Text>
+        {isUser ? (
+          <Text className="text-sm leading-relaxed text-white">{item.content}</Text>
+        ) : (
+          <Markdown style={MARKDOWN_STYLES}>{item.content}</Markdown>
+        )}
       </View>
       {!isUser && item.sources && item.sources.length > 0 && (
         <View className="mt-1 max-w-[82%] w-full">
@@ -108,6 +111,22 @@ const MessageItem = memo(function MessageItem({
     </View>
   );
 });
+
+const MARKDOWN_STYLES = {
+  body: { color: '#1e293b', fontSize: 14, lineHeight: 22 },
+  bullet_list: { marginVertical: 4 },
+  ordered_list: { marginVertical: 4 },
+  list_item: { marginVertical: 2 },
+  bullet_list_icon: { color: '#475569', marginTop: 6 },
+  strong: { fontWeight: '700' as const, color: '#0f172a' },
+  em: { fontStyle: 'italic' as const },
+  code_inline: { backgroundColor: '#f1f5f9', color: '#0f172a', borderRadius: 4, paddingHorizontal: 4, fontSize: 13 },
+  fence: { backgroundColor: '#f1f5f9', borderRadius: 8, padding: 12, marginVertical: 6 },
+  paragraph: { marginVertical: 2 },
+  heading1: { fontSize: 16, fontWeight: '700' as const, color: '#0f172a', marginVertical: 4 },
+  heading2: { fontSize: 15, fontWeight: '700' as const, color: '#0f172a', marginVertical: 4 },
+  heading3: { fontSize: 14, fontWeight: '700' as const, color: '#0f172a', marginVertical: 2 },
+};
 
 const LIST_CONTENT_STYLE = { padding: 16, paddingBottom: 8 };
 const keyExtractor = (item: Message) => item.id;
