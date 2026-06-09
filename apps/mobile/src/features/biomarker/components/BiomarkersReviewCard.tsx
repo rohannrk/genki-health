@@ -13,10 +13,9 @@ import { statusMeta, formatValue, classifyStatus } from '../data';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+/** Only the measured value is user-editable; reference ranges come from the lab. */
 type Draft = {
   value: string;
-  refLow: string;
-  refHigh: string;
 };
 
 type Props = {
@@ -43,11 +42,7 @@ function numOrNull(s: string): number | null {
 }
 
 function initialDraft(r: BiomarkerReading): Draft {
-  return {
-    value: formatValue(r.value),
-    refLow: r.refLow != null ? formatValue(r.refLow) : '',
-    refHigh: r.refHigh != null ? formatValue(r.refHigh) : '',
-  };
+  return { value: formatValue(r.value) };
 }
 
 const PRIMARY = '#14532d';
@@ -102,56 +97,45 @@ function EditRow({
 }: {
   reading: BiomarkerReading;
   draft: Draft;
-  onChange: (field: keyof Draft, val: string) => void;
+  onChange: (val: string) => void;
 }) {
-  const inputBase =
-    'border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-slate-900 bg-white text-center';
-
   return (
-    <View className="py-3">
-      <Text className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">
-        {reading.name}
-        <Text className="text-slate-400 font-normal normal-case"> · {reading.unit}</Text>
-      </Text>
-      <View className="flex-row items-center gap-2">
-        {/* Value */}
-        <View style={{ flex: 1 }}>
-          <Text className="text-[10px] text-slate-400 mb-0.5 text-center">Value</Text>
-          <TextInput
-            value={draft.value}
-            onChangeText={(v) => onChange('value', v)}
-            keyboardType="decimal-pad"
-            placeholder="—"
-            placeholderTextColor="#cbd5e1"
-            className={inputBase}
-            style={{ minWidth: 60 }}
-          />
-        </View>
-        {/* Range low */}
-        <View style={{ flex: 1 }}>
-          <Text className="text-[10px] text-slate-400 mb-0.5 text-center">Ref low</Text>
-          <TextInput
-            value={draft.refLow}
-            onChangeText={(v) => onChange('refLow', v)}
-            keyboardType="decimal-pad"
-            placeholder="—"
-            placeholderTextColor="#cbd5e1"
-            className={inputBase}
-          />
-        </View>
-        <Text className="text-slate-300 mt-3">–</Text>
-        {/* Range high */}
-        <View style={{ flex: 1 }}>
-          <Text className="text-[10px] text-slate-400 mb-0.5 text-center">Ref high</Text>
-          <TextInput
-            value={draft.refHigh}
-            onChangeText={(v) => onChange('refHigh', v)}
-            keyboardType="decimal-pad"
-            placeholder="—"
-            placeholderTextColor="#cbd5e1"
-            className={inputBase}
-          />
-        </View>
+    <View className="flex-row items-center py-3">
+      {/* Name + ref range (static) */}
+      <View style={{ flex: 1 }}>
+        <Text className="text-sm font-semibold text-slate-800" numberOfLines={1}>
+          {reading.name}
+        </Text>
+        <Text className="text-xs text-slate-400 mt-0.5">
+          {refRangeLabel(reading.refLow, reading.refHigh)}
+        </Text>
+      </View>
+
+      {/* Editable value + static unit */}
+      <View className="flex-row items-center gap-1.5">
+        <TextInput
+          value={draft.value}
+          onChangeText={onChange}
+          keyboardType="decimal-pad"
+          placeholder="—"
+          placeholderTextColor="#cbd5e1"
+          style={{
+            width: 72,
+            borderWidth: 1,
+            borderColor: '#14532d',
+            borderRadius: 8,
+            paddingHorizontal: 8,
+            paddingVertical: 6,
+            fontSize: 14,
+            fontWeight: '700',
+            color: '#0f172a',
+            textAlign: 'center',
+            backgroundColor: '#f0fdf4',
+          }}
+        />
+        <Text className="text-sm text-slate-400" style={{ minWidth: 36 }}>
+          {reading.unit}
+        </Text>
       </View>
     </View>
   );
@@ -176,15 +160,12 @@ export default function BiomarkersReviewCard({ readings, onSave }: Props) {
     setDrafts({});
   }, []);
 
-  const handleChange = useCallback((id: string, field: keyof Draft, val: string) => {
-    setDrafts((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], [field]: val },
-    }));
+  const handleChange = useCallback((id: string, val: string) => {
+    setDrafts((prev) => ({ ...prev, [id]: { value: val } }));
   }, []);
 
   const handleSave = useCallback(async () => {
-    // Validate: every value field must be a finite number.
+    // Validate: every value must be a finite number.
     for (const r of readings) {
       const d = drafts[r.id];
       if (!d) continue;
@@ -199,11 +180,10 @@ export default function BiomarkersReviewCard({ readings, onSave }: Props) {
         const d = drafts[r.id];
         if (!d) return null;
         const value = numOrNull(d.value)!;
-        const refLow = numOrNull(d.refLow);
-        const refHigh = numOrNull(d.refHigh);
-        // Skip rows that haven't changed.
-        if (value === r.value && refLow === r.refLow && refHigh === r.refHigh) return null;
-        return { id: r.id, value, refLow, refHigh };
+        // Skip rows whose value hasn't changed.
+        if (value === r.value) return null;
+        // Pass through existing ref range unchanged.
+        return { id: r.id, value, refLow: r.refLow, refHigh: r.refHigh };
       })
       .filter((u): u is NonNullable<typeof u> => u !== null);
 
@@ -276,7 +256,7 @@ export default function BiomarkersReviewCard({ readings, onSave }: Props) {
               <EditRow
                 reading={r}
                 draft={drafts[r.id] ?? initialDraft(r)}
-                onChange={(field, val) => handleChange(r.id, field, val)}
+                onChange={(val) => handleChange(r.id, val)}
               />
             ) : (
               <ViewRow reading={r} />
