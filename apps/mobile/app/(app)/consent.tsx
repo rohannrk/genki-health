@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -46,6 +46,8 @@ function formatTimestamp(iso: string): string {
 export default function ConsentScreen() {
   const router = useRouter();
   const { getToken, signOut } = useAuth();
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
 
   const [settings, setSettings] = useState<ConsentSettings | null>(null);
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -55,7 +57,7 @@ export default function ConsentScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const load = useCallback(async () => {
-    const token = await getToken();
+    const token = await getTokenRef.current();
     if (!token) return;
     const [consentData, auditData] = await Promise.all([
       consentApi.get(token),
@@ -63,7 +65,7 @@ export default function ConsentScreen() {
     ]);
     setSettings(consentData);
     setLogs(auditData.logs);
-  }, [getToken]);
+  }, []);
 
   useEffect(() => {
     load()
@@ -89,7 +91,7 @@ export default function ConsentScreen() {
     const previous = settings;
     setSettings((s) => (s ? { ...s, aiOptIn: value } : s));
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       if (!token) throw new Error('No session');
       const updated = await consentApi.update({ aiOptIn: value }, token);
       setSettings(updated);
@@ -113,7 +115,7 @@ export default function ConsentScreen() {
           onPress: async () => {
             setIsDeleting(true);
             try {
-              const token = await getToken();
+              const token = await getTokenRef.current();
               if (!token) throw new Error('No session');
               await consentApi.deleteAccount(token);
               // Sign out of Clerk too — otherwise the next authed request would
