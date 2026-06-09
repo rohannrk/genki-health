@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -36,6 +36,10 @@ export default function ShareScreen() {
   const router = useRouter();
   const { getToken } = useAuth();
   const { activeProfile } = useProfile();
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
+  const activeProfileRef = useRef(activeProfile);
+  activeProfileRef.current = activeProfile;
 
   const [docs, setDocs] = useState<MedicalDocument[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -49,21 +53,22 @@ export default function ShareScreen() {
   const selectedIds = Object.keys(selected).filter((id) => selected[id]);
 
   const load = useCallback(async () => {
-    if (!profileId) {
+    const pid = activeProfileRef.current?.id;
+    if (!pid) {
       setIsLoading(false);
       return;
     }
-    const token = await getToken();
+    const token = await getTokenRef.current();
     if (!token) return;
-    const data = await documentsApi.list(profileId, token);
+    const data = await documentsApi.list(pid, token);
     setDocs(data.documents);
-  }, [getToken, profileId]);
+  }, []);
 
   useEffect(() => {
     load()
       .catch(() => Alert.alert('Error', 'Could not load documents.'))
       .finally(() => setIsLoading(false));
-  }, [load]);
+  }, [profileId]);
 
   const toggle = (id: string) => {
     setShare(null); // selection changed — invalidate any prior link
@@ -74,7 +79,7 @@ export default function ShareScreen() {
     if (isCreating || !profileId || selectedIds.length === 0) return;
     setIsCreating(true);
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       if (!token) throw new Error('No session');
       const created = await sharesApi.create(
         { profileId, documentIds: selectedIds, expiresInHours: expiryHours },
@@ -106,7 +111,7 @@ export default function ShareScreen() {
     if (isExporting || !profileId || selectedIds.length === 0) return;
     setIsExporting(true);
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       if (!token) throw new Error('No session');
       const downloadUrl = await documentsApi.exportPdf(
         { profileId, documentIds: selectedIds },
