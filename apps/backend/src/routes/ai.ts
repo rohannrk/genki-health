@@ -427,10 +427,33 @@ router.get(
         .orderBy(asc(chatMessages.createdAt))
         .limit(200);
 
-      res.status(200).json({
-        status: 'success',
-        data: { messages: rows.map(r => ({ id: r.id, role: r.role, content: r.content, sources: r.sources ?? undefined })) },
+      // Collect all document IDs referenced in sources across all messages
+      const docIds = new Set<string>();
+      for (const row of rows) {
+        const sources = row.sources as Array<{ documentId: string }> | null;
+        if (sources) sources.forEach(s => docIds.add(s.documentId));
+      }
+
+      // Fetch current titles for all referenced documents in one query
+      const currentTitles = new Map<string, string | null>();
+      if (docIds.size > 0) {
+        const docs = await db.query.medicalDocuments.findMany({
+          where: eq(medicalDocuments.profileId, profileId),
+          columns: { id: true, title: true },
+        });
+        docs.forEach(d => currentTitles.set(d.id, d.title));
+      }
+
+      const messages = rows.map(r => {
+        const sources = r.sources as Array<{ documentId: string; title: string | null; [key: string]: unknown }> | null;
+        const hydratedSources = sources?.map(s => ({
+          ...s,
+          title: currentTitles.has(s.documentId) ? currentTitles.get(s.documentId) ?? null : s.title,
+        }));
+        return { id: r.id, role: r.role, content: r.content, sources: hydratedSources ?? undefined };
       });
+
+      res.status(200).json({ status: 'success', data: { messages } });
     } catch (error) {
       next(error);
     }
