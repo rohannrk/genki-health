@@ -4,13 +4,13 @@
     {
       "name": "Backend API",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@medcopilot/backend", "dev"],
+      "runtimeArgs": ["--filter", "@genki/backend", "dev"],
       "port": 8000
     },
     {
       "name": "Mobile (Expo)",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@medcopilot/mobile", "start", "--", "--port", "8082"],
+      "runtimeArgs": ["--filter", "@genki/mobile", "start", "--", "--port", "8082"],
       "port": 8082,
       "autoPort": false
     },
@@ -23,7 +23,7 @@
     {
       "name": "Drizzle Studio",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@medcopilot/backend", "db:studio"],
+      "runtimeArgs": ["--filter", "@genki/backend", "db:studio"],
       "port": 4983
     }
   ]
