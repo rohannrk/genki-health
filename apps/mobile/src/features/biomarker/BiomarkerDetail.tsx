@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BiomarkerDetail as BiomarkerDetailData } from '@medcopilot/types';
+import { BiomarkerDetail as BiomarkerDetailData } from '@genki/types';
 import { biomarkerInfo } from './data';
 import DetailHeader from './components/DetailHeader';
 import HeroValue from './components/HeroValue';

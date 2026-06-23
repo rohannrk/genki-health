@@ -9,7 +9,7 @@ const monorepoRoot = path.resolve(projectRoot, "../..");
 const config = getDefaultConfig(projectRoot);
 
 // Watch the monorepo root so Metro can see hoisted node_modules and workspace
-// packages (e.g. @medcopilot/ui).
+// packages (e.g. @genki/ui).
 config.watchFolders = [monorepoRoot];
 
 // Resolve modules from both the local node_modules and the hoisted root.

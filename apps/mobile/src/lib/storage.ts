@@ -1,8 +1,8 @@
 import * as SecureStore from 'expo-secure-store';
 
-const AUTH_TOKEN_KEY = 'medcopilot_auth_token';
-const API_KEY_KEY = 'medcopilot_api_key';
-const ONBOARDING_SEEN_KEY = 'medcopilot_onboarding_seen';
+const AUTH_TOKEN_KEY = 'genki_auth_token';
+const API_KEY_KEY = 'genki_api_key';
+const ONBOARDING_SEEN_KEY = 'genki_onboarding_seen';
 
 export async function clearToken(): Promise<void> {
   await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);

@@ -12,9 +12,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
-import { documents as docsApi, biomarkers as biomarkersApi } from '@medcopilot/api-client';
-import { MedicalDocument, BiomarkerReading, UpdateBiomarkerReadingInput } from '@medcopilot/types';
-import { formatDate } from '@medcopilot/utils';
+import { documents as docsApi, biomarkers as biomarkersApi } from '@genki/api-client';
+import { MedicalDocument, BiomarkerReading, UpdateBiomarkerReadingInput } from '@genki/types';
+import { formatDate } from '@genki/utils';
 import { useProfile } from '../../../src/context/ProfileContext';
 import BiomarkersReviewCard from '../../../src/features/biomarker/components/BiomarkersReviewCard';
 

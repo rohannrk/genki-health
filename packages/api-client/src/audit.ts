@@ -1,4 +1,4 @@
-import { AuditLog } from '@medcopilot/types';
+import { AuditLog } from '@genki/types';
 import { get } from './http';
 
 type Envelope<T> = { status: string; data: T };

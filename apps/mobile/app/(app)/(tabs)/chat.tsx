@@ -14,7 +14,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import Markdown from 'react-native-markdown-display';
-import { ai as aiApi, ChatMessage, ChatSource, HistoryMessage } from '@medcopilot/api-client';
+import { ai as aiApi, ChatMessage, ChatSource, HistoryMessage } from '@genki/api-client';
 import { useProfile } from '../../../src/context/ProfileContext';
 
 type Message = {
@@ -27,7 +27,7 @@ type Message = {
 const WELCOME: Message = {
   id: 'welcome',
   role: 'assistant',
-  content: "Hello! I'm your Medical Copilot. Ask me anything about the patient's records — diagnoses, medications, test results, or follow-ups.",
+  content: "Hello! I'm your Genki. Ask me anything about the patient's records — diagnoses, medications, test results, or follow-ups.",
 };
 
 function cacheFile(profileId: string) {

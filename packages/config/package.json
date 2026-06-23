@@ -1,5 +1,5 @@
 {
-  "name": "@medcopilot/config",
+  "name": "@genki/config",
   "version": "1.0.0",
   "private": true,
   "main": "./index.js",

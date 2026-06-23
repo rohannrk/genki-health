@@ -1,4 +1,4 @@
-# EAS Staging Deployment Workflow for Medical Copilot Monorepo
+# EAS Staging Deployment Workflow for Genki Monorepo
 # This workflow compiles, validates, and deploys the mobile application to Expo Application Services (EAS).
 # Triggered only on pushes to the main branch.
 

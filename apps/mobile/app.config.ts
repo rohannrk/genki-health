@@ -1,16 +1,16 @@
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => {
-  const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://api.medcopilot.in';
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://api.genki.in';
 
   return {
     ...config,
-    name: 'Medical Copilot',
-    slug: 'medical-copilot',
+    name: 'Genki',
+    slug: 'genki',
     version: '1.0.0',
     orientation: 'portrait',
     // icon: './assets/images/icon.png',
-    scheme: 'medcopilot',
+    scheme: 'genki',
     userInterfaceStyle: 'automatic',
     platforms: ['ios', 'android'],
     splash: {
@@ -20,10 +20,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     ios: {
       supportsTablet: true,
-      bundleIdentifier: 'com.medcopilot.app',
+      bundleIdentifier: 'com.genki.app',
     },
     android: {
-      package: 'com.medcopilot.app',
+      package: 'com.genki.app',
       adaptiveIcon: {
         // foregroundImage: './assets/images/adaptive-icon.png',
         backgroundColor: '#ffffff',
@@ -42,7 +42,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         'expo-image-picker',
         {
           photosPermission:
-            'Allow Medical Copilot to access your photos to set a profile avatar.',
+            'Allow Genki to access your photos to set a profile avatar.',
         },
       ],
     ],

@@ -1,6 +1,6 @@
-# Medical Copilot Monorepo
+# Genki Monorepo
 
-This is a production-grade Turborepo monorepo for the **Medical Copilot** React Native mobile application.
+This is a production-grade Turborepo monorepo for the **Genki** React Native mobile application.
 
 ## Monorepo Structure
 
@@ -9,7 +9,7 @@ apps/
   └── mobile/          — Expo managed workflow mobile application (SDK 51+, TypeScript, NativeWind v4)
 packages/
   ├── types/           — Shared TypeScript types only, no runtime dependencies
-  ├── api-client/      — Typed Fetch client wrapper using @medcopilot/types
+  ├── api-client/      — Typed Fetch client wrapper using @genki/types
   ├── ui/              — Shared React Native components styled with NativeWind v4
   ├── utils/           — Pure utility functions, no React dependencies
   └── config/          — Shared configurations (eslint, prettier, tsconfig)

@@ -1,5 +1,5 @@
 import { get, post, patch, del, getBaseUrl } from './http';
-import { MedicalDocument } from '@medcopilot/types';
+import { MedicalDocument } from '@genki/types';
 
 export interface UploadUrlResponse {
   documentId: string;

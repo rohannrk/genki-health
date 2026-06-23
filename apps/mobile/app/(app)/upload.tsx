@@ -12,7 +12,7 @@ import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { documents as docsApi } from '@medcopilot/api-client';
+import { documents as docsApi } from '@genki/api-client';
 import { useProfile } from '../../src/context/ProfileContext';
 
 type PickedFile = {

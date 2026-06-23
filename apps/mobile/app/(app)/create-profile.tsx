@@ -15,8 +15,8 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { profiles as profilesApi } from '@medcopilot/api-client';
-import type { Relation } from '@medcopilot/types';
+import { profiles as profilesApi } from '@genki/api-client';
+import type { Relation } from '@genki/types';
 import { useProfile } from '../../src/context/ProfileContext';
 
 const RELATIONS: { label: string; value: Relation }[] = [

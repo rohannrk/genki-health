@@ -1,4 +1,4 @@
-import { PatientProfile, CreateProfileInput } from '@medcopilot/types';
+import { PatientProfile, CreateProfileInput } from '@genki/types';
 import { get, post, patch, del } from './http';
 
 // The backend wraps successful responses as { status: 'success', data: T }.

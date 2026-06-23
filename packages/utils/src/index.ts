@@ -1,4 +1,4 @@
-import { MedicalDocument } from '@medcopilot/types';
+import { MedicalDocument } from '@genki/types';
 
 /** Uses UTC to avoid timezone drift. */
 export function formatDate(iso: string): string {

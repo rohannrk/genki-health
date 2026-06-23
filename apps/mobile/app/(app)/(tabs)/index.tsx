@@ -10,9 +10,9 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
-import { documents as docsApi, biomarkers as biomarkersApi } from '@medcopilot/api-client';
-import { MedicalDocument, BiomarkerSummary } from '@medcopilot/types';
-import { formatDate } from '@medcopilot/utils';
+import { documents as docsApi, biomarkers as biomarkersApi } from '@genki/api-client';
+import { MedicalDocument, BiomarkerSummary } from '@genki/types';
+import { formatDate } from '@genki/utils';
 import { useProfile } from '../../../src/context/ProfileContext';
 import { DOC_TYPE_ICON_NAMES } from '../../../src/lib/docTypeUtils';
 import { statusMeta, formatValue } from '../../../src/features/biomarker/data';

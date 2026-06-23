@@ -1,5 +1,5 @@
 {
-  "name": "@medcopilot/utils",
+  "name": "@genki/utils",
   "version": "1.0.0",
   "private": true,
   "main": "./dist/index.js",
@@ -17,7 +17,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@medcopilot/types": "workspace:*"
+    "@genki/types": "workspace:*"
   },
   "devDependencies": {
     "typescript": "~5.3.3",

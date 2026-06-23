@@ -8,7 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { BiomarkerReading } from '@medcopilot/types';
+import { BiomarkerReading } from '@genki/types';
 import { statusMeta, formatValue, classifyStatus } from '../data';
 
 // ─── Types ───────────────────────────────────────────────────────────────────

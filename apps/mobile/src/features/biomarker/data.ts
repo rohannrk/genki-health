@@ -1,4 +1,4 @@
-import { BiomarkerStatus } from '@medcopilot/types';
+import { BiomarkerStatus } from '@genki/types';
 
 export type { BiomarkerStatus };
 

@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 export function getBaseUrl() {
-  return process.env.EXPO_PUBLIC_API_URL || 'https://api.medcopilot.in';
+  return process.env.EXPO_PUBLIC_API_URL || 'https://api.genki.in';
 }
 
 function authHeaders(token: string): Record<string, string> {

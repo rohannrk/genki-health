@@ -1,5 +1,5 @@
 {
-  "name": "medical-copilot-monorepo",
+  "name": "genki-monorepo",
   "version": "1.0.0",
   "private": true,
   "packageManager": "pnpm@10.10.0",
@@ -10,11 +10,11 @@
   "scripts": {
     "dev": "concurrently --names 'DB,PKGS,BACKEND,MOBILE' --prefix-colors 'blue,yellow,green,magenta' 'pnpm dev:db' 'pnpm dev:packages' 'pnpm dev:backend' 'pnpm dev:mobile'",
     "dev:db": "docker compose -f apps/backend/docker-compose.yml up postgres",
-    "dev:packages": "concurrently --names 'types,utils,api' --prefix-colors 'cyan,blue,yellow' 'pnpm --filter @medcopilot/types dev' 'pnpm --filter @medcopilot/utils dev' 'pnpm --filter @medcopilot/api-client dev'",
-    "dev:backend": "pnpm --filter @medcopilot/backend dev",
-    "dev:mobile": "pnpm --filter @medcopilot/mobile start",
+    "dev:packages": "concurrently --names 'types,utils,api' --prefix-colors 'cyan,blue,yellow' 'pnpm --filter @genki/types dev' 'pnpm --filter @genki/utils dev' 'pnpm --filter @genki/api-client dev'",
+    "dev:backend": "pnpm --filter @genki/backend dev",
+    "dev:mobile": "pnpm --filter @genki/mobile start",
     "build": "turbo run build",
-    "build:packages": "pnpm --filter @medcopilot/types --filter @medcopilot/utils --filter @medcopilot/api-client run build",
+    "build:packages": "pnpm --filter @genki/types --filter @genki/utils --filter @genki/api-client run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck"
   },

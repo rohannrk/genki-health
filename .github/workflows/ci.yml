@@ -1,4 +1,4 @@
-# Continuous Integration (CI) Workflow for Medical Copilot Monorepo
+# Continuous Integration (CI) Workflow for Genki Monorepo
 # This workflow runs validation checks on pull requests targeting main or develop branches.
 
 name: CI Pipeline

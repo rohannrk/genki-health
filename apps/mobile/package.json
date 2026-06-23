@@ -1,5 +1,5 @@
 {
-  "name": "@medcopilot/mobile",
+  "name": "@genki/mobile",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "private": true,
@@ -13,10 +13,10 @@
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.19.31",
-    "@medcopilot/api-client": "workspace:*",
-    "@medcopilot/types": "workspace:*",
-    "@medcopilot/ui": "workspace:*",
-    "@medcopilot/utils": "workspace:*",
+    "@genki/api-client": "workspace:*",
+    "@genki/types": "workspace:*",
+    "@genki/ui": "workspace:*",
+    "@genki/utils": "workspace:*",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-community/datetimepicker": "8.0.1",
     "expo": "~51.0.8",

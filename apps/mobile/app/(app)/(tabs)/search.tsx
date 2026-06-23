@@ -10,9 +10,9 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
-import { ai as aiApi, SearchResult } from '@medcopilot/api-client';
+import { ai as aiApi, SearchResult } from '@genki/api-client';
 import { useProfile } from '../../../src/context/ProfileContext';
-import { formatDate } from '@medcopilot/utils';
+import { formatDate } from '@genki/utils';
 import { DOC_TYPE_ICON_NAMES } from '../../../src/lib/docTypeUtils';
 
 export default function SearchTab() {

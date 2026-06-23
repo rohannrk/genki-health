@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { useProfile } from '../../src/context/ProfileContext';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://api.medcopilot.in';
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://api.genki.in';
 
 type ProviderId = 'openai' | 'anthropic' | 'gemini';
 

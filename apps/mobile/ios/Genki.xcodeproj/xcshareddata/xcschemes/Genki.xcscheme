@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "MedicalCopilot.app"
-               BlueprintName = "MedicalCopilot"
-               ReferencedContainer = "container:MedicalCopilot.xcodeproj">
+               BuildableName = "Genki.app"
+               BlueprintName = "Genki"
+               ReferencedContainer = "container:Genki.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "MedicalCopilotTests.xctest"
-               BlueprintName = "MedicalCopilotTests"
-               ReferencedContainer = "container:MedicalCopilot.xcodeproj">
+               BuildableName = "GenkiTests.xctest"
+               BlueprintName = "GenkiTests"
+               ReferencedContainer = "container:Genki.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "MedicalCopilot.app"
-            BlueprintName = "MedicalCopilot"
-            ReferencedContainer = "container:MedicalCopilot.xcodeproj">
+            BuildableName = "Genki.app"
+            BlueprintName = "Genki"
+            ReferencedContainer = "container:Genki.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "MedicalCopilot.app"
-            BlueprintName = "MedicalCopilot"
-            ReferencedContainer = "container:MedicalCopilot.xcodeproj">
+            BuildableName = "Genki.app"
+            BlueprintName = "Genki"
+            ReferencedContainer = "container:Genki.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

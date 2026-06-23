@@ -12,8 +12,8 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
-import { documents as documentsApi, shares as sharesApi } from '@medcopilot/api-client';
-import type { MedicalDocument, Share } from '@medcopilot/types';
+import { documents as documentsApi, shares as sharesApi } from '@genki/api-client';
+import type { MedicalDocument, Share } from '@genki/types';
 import { useProfile } from '../../src/context/ProfileContext';
 
 const EXPIRY_OPTIONS = [

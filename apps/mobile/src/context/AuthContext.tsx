@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-expo';
-import { User } from '@medcopilot/types';
+import { User } from '@genki/types';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://api.medcopilot.in';
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://api.genki.in';
 
 type AuthContextType = {
   dbUser: User | null;

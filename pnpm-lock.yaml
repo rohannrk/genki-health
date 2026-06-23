@@ -123,16 +123,16 @@ importers:
       '@clerk/clerk-expo':
         specifier: ^2.19.31
         version: 2.19.31(dab93f9bee8d199c0f3c7cca477c7c27)
-      '@medcopilot/api-client':
+      '@genki/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
-      '@medcopilot/types':
+      '@genki/types':
         specifier: workspace:*
         version: link:../../packages/types
-      '@medcopilot/ui':
+      '@genki/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@medcopilot/utils':
+      '@genki/utils':
         specifier: workspace:*
         version: link:../../packages/utils
       '@react-native-async-storage/async-storage':
@@ -253,7 +253,7 @@ importers:
 
   packages/api-client:
     dependencies:
-      '@medcopilot/types':
+      '@genki/types':
         specifier: workspace:*
         version: link:../types
     devDependencies:
@@ -296,7 +296,7 @@ importers:
 
   packages/utils:
     dependencies:
-      '@medcopilot/types':
+      '@genki/types':
         specifier: workspace:*
         version: link:../types
     devDependencies:
@@ -10081,7 +10081,7 @@ snapshots:
       chalk: 4.1.2
       execa: 5.1.1
       metro: 0.80.12(bufferutil@4.1.0)(utf-8-validate@6.0.6)
-      metro-config: 0.80.12(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      metro-config: 0.80.12(bufferutil@4.1.0)
       metro-core: 0.80.12
       node-fetch: 2.7.0
       querystring: 0.2.1
@@ -14019,21 +14019,6 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  metro-config@0.80.12(bufferutil@4.1.0)(utf-8-validate@6.0.6):
-    dependencies:
-      connect: 3.7.0
-      cosmiconfig: 5.2.1
-      flow-enums-runtime: 0.0.6
-      jest-validate: 29.7.0
-      metro: 0.80.12(bufferutil@4.1.0)(utf-8-validate@6.0.6)
-      metro-cache: 0.80.12
-      metro-core: 0.80.12
-      metro-runtime: 0.80.12
-    transitivePeerDependencies:
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-
   metro-core@0.80.12:
     dependencies:
       flow-enums-runtime: 0.0.6
@@ -14225,7 +14210,7 @@ snapshots:
       metro-babel-transformer: 0.80.12
       metro-cache: 0.80.12
       metro-cache-key: 0.80.12
-      metro-config: 0.80.12(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      metro-config: 0.80.12(bufferutil@4.1.0)
       metro-core: 0.80.12
       metro-file-map: 0.80.12
       metro-resolver: 0.80.12

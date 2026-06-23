@@ -1,4 +1,4 @@
-import { ConsentSettings } from '@medcopilot/types';
+import { ConsentSettings } from '@genki/types';
 import { get, patch, del } from './http';
 
 type Envelope<T> = { status: string; data: T };

@@ -70,7 +70,7 @@ export default function SettingsTab() {
     <View className="flex-1 bg-slate-50">
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
         <View className="bg-white rounded-xl border border-slate-200 p-4 mb-4">
-          <Text className="text-base font-semibold text-slate-800 mb-1">Medical Copilot v1.0.0</Text>
+          <Text className="text-base font-semibold text-slate-800 mb-1">Genki v1.0.0</Text>
           <Text className="text-sm text-slate-500">Secure HIPAA-compliant clinical environment</Text>
         </View>
 

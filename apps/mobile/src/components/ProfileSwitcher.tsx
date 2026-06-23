@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, Modal, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
-import type { PatientProfile } from '@medcopilot/types';
+import type { PatientProfile } from '@genki/types';
 import { useProfile } from '../context/ProfileContext';
 
 function initials(name: string): string {

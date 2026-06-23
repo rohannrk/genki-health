@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { formatDate, formatFileSize, maskApiKey, groupByMonth } from './index';
-import { MedicalDocument } from '@medcopilot/types';
+import { MedicalDocument } from '@genki/types';
 
 describe('formatDate', () => {
   it('should format ISO string to DD MMM YYYY', () => {

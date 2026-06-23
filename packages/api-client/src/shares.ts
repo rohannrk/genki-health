@@ -1,4 +1,4 @@
-import { Share } from '@medcopilot/types';
+import { Share } from '@genki/types';
 import { get, post, del } from './http';
 
 type Envelope<T> = { status: string; data: T };

@@ -4,7 +4,7 @@ import {
   BiomarkerDetail,
   BiomarkerReading,
   UpdateBiomarkerReadingInput,
-} from '@medcopilot/types';
+} from '@genki/types';
 
 export const biomarkers = {
   /** Latest reading per biomarker for a profile (Home list/grid). */

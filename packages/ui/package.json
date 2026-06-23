@@ -1,5 +1,5 @@
 {
-  "name": "@medcopilot/ui",
+  "name": "@genki/ui",
   "version": "1.0.0",
   "private": true,
   "main": "./dist/index.js",

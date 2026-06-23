@@ -71,7 +71,7 @@ export default function LoginScreen() {
               <Ionicons name="medkit-outline" size={30} color="#ffffff" />
             </View>
             <Text className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              Medical Copilot
+              Genki
             </Text>
             <Text className="text-sm text-slate-500 mt-1">Secure Clinical Records & Assistant</Text>
           </View>

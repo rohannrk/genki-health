@@ -9,8 +9,8 @@ import React, {
 } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { useAuth } from '@clerk/clerk-expo';
-import { PatientProfile } from '@medcopilot/types';
-import { profiles as profilesApi } from '@medcopilot/api-client';
+import { PatientProfile } from '@genki/types';
+import { profiles as profilesApi } from '@genki/api-client';
 
 const ACTIVE_PROFILE_KEY = 'activeProfileId';
 

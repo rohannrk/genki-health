@@ -1,5 +1,5 @@
 {
-  "name": "@medcopilot/api-client",
+  "name": "@genki/api-client",
   "version": "1.0.0",
   "private": true,
   "main": "./dist/index.js",
@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@medcopilot/types": "workspace:*"
+    "@genki/types": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

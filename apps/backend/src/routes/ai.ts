@@ -358,7 +358,7 @@ router.post(
         ? `\n\nWEB SEARCH (up-to-date clinical reference):\n${webContext}`
         : '';
 
-      const systemPrompt = `You are Medical Copilot, a knowledgeable clinical AI assistant for ${profile.name}'s health records.
+      const systemPrompt = `You are Genki, a knowledgeable clinical AI assistant for ${profile.name}'s health records.
 
 Your role:
 - Answer questions about the patient's records accurately, citing source documents as [Doc: <id>] inline.

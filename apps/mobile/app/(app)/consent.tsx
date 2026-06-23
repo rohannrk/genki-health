@@ -12,8 +12,8 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
-import { consent as consentApi, audit as auditApi } from '@medcopilot/api-client';
-import type { AuditLog, ConsentSettings } from '@medcopilot/types';
+import { consent as consentApi, audit as auditApi } from '@genki/api-client';
+import type { AuditLog, ConsentSettings } from '@genki/types';
 
 // Human-readable labels for the audit action codes the backend emits.
 const ACTION_LABELS: Record<string, string> = {

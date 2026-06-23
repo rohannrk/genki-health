@@ -4,8 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
-import { biomarkers as biomarkersApi } from '@medcopilot/api-client';
-import { BiomarkerDetail as BiomarkerDetailData } from '@medcopilot/types';
+import { biomarkers as biomarkersApi } from '@genki/api-client';
+import { BiomarkerDetail as BiomarkerDetailData } from '@genki/types';
 import { useProfile } from '../../../src/context/ProfileContext';
 import BiomarkerDetail from '../../../src/features/biomarker/BiomarkerDetail';
 
