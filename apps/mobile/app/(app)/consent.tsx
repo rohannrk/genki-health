@@ -11,9 +11,10 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
-import { Ionicons } from '@expo/vector-icons';
+import { ArrowLeft } from 'lucide-react-native';
 import { consent as consentApi, audit as auditApi } from '@genki/api-client';
 import type { AuditLog, ConsentSettings } from '@genki/types';
+import { colors, shadows } from '../../src/theme/genki';
 
 // Human-readable labels for the audit action codes the backend emits.
 const ACTION_LABELS: Record<string, string> = {
@@ -87,7 +88,6 @@ export default function ConsentScreen() {
   const handleToggleConsent = async (value: boolean) => {
     if (isSavingConsent) return;
     setIsSavingConsent(true);
-    // Optimistic update; revert on failure.
     const previous = settings;
     setSettings((s) => (s ? { ...s, aiOptIn: value } : s));
     try {
@@ -118,9 +118,6 @@ export default function ConsentScreen() {
               const token = await getTokenRef.current();
               if (!token) throw new Error('No session');
               await consentApi.deleteAccount(token);
-              // Sign out of Clerk too — otherwise the next authed request would
-              // recreate an empty user via the getOrCreateUser middleware. The
-              // (app) layout guard redirects to login once the session clears.
               await signOut();
             } catch {
               setIsDeleting(false);
@@ -134,15 +131,15 @@ export default function ConsentScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-slate-50">
-        <ActivityIndicator color="#059669" size="large" />
+      <View className="flex-1 items-center justify-center bg-genki-bg">
+        <ActivityIndicator color={colors.g8} size="large" />
       </View>
     );
   }
 
   return (
     <ScrollView
-      className="flex-1 bg-slate-50"
+      className="flex-1 bg-genki-bg"
       contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
     >
@@ -153,17 +150,17 @@ export default function ConsentScreen() {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-back" size={20} color="#0d9488" style={{ marginRight: 12 }} />
+          <ArrowLeft size={20} color={colors.g8} style={{ marginRight: 12 }} />
         </TouchableOpacity>
-        <Text className="text-2xl font-bold text-slate-800">Consent &amp; Privacy</Text>
+        <Text className="text-2xl font-bold text-genki-text">Consent &amp; Privacy</Text>
       </View>
 
       {/* AI opt-in */}
-      <View className="bg-white rounded-xl border border-slate-200 p-4 mb-4">
+      <View className="bg-white rounded-rm p-4 mb-4" style={shadows.shS}>
         <View className="flex-row justify-between items-center">
           <View className="flex-1 pr-4">
-            <Text className="text-base font-semibold text-slate-800">AI processing</Text>
-            <Text className="text-sm text-slate-500 mt-1">
+            <Text className="text-base font-semibold text-genki-text">AI processing</Text>
+            <Text className="text-sm text-genki-muted mt-1">
               Allow your records to be processed by AI features (chat, search, summaries).
             </Text>
           </View>
@@ -171,20 +168,20 @@ export default function ConsentScreen() {
             value={settings?.aiOptIn ?? false}
             onValueChange={handleToggleConsent}
             disabled={isSavingConsent}
-            trackColor={{ true: '#0d9488', false: '#cbd5e1' }}
+            trackColor={{ true: colors.g8, false: colors.border }}
           />
         </View>
         {settings?.consentUpdatedAt ? (
-          <Text className="text-xs text-slate-400 mt-2">
+          <Text className="text-xs text-genki-faint mt-2">
             Updated {formatTimestamp(settings.consentUpdatedAt)}
           </Text>
         ) : null}
       </View>
 
       {/* Data deletion */}
-      <View className="bg-white rounded-xl border border-slate-200 p-4 mb-4">
-        <Text className="text-base font-semibold text-slate-800 mb-1">Delete all my data</Text>
-        <Text className="text-sm text-slate-500 mb-3">
+      <View className="bg-white rounded-rm p-4 mb-4" style={shadows.shS}>
+        <Text className="text-base font-semibold text-genki-text mb-1">Delete all my data</Text>
+        <Text className="text-sm text-genki-muted mb-3">
           Permanently erase your account and every record we store for you.
         </Text>
         <TouchableOpacity
@@ -192,34 +189,34 @@ export default function ConsentScreen() {
           disabled={isDeleting}
           accessibilityRole="button"
           accessibilityLabel="Delete all my data"
-          className="bg-red-50 border border-red-200 py-3 rounded-xl items-center justify-center"
+          className="bg-[#FDECEA] py-3 rounded-rm items-center justify-center"
         >
           {isDeleting ? (
-            <ActivityIndicator color="#dc2626" />
+            <ActivityIndicator color="#C0392B" />
           ) : (
-            <Text className="text-red-600 font-bold text-base">Delete everything</Text>
+            <Text className="text-[#C0392B] font-bold text-base">Delete everything</Text>
           )}
         </TouchableOpacity>
       </View>
 
       {/* Audit log viewer */}
-      <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-2">
+      <Text className="text-xs font-semibold text-genki-muted uppercase tracking-wider mb-2 mt-2">
         Activity log
       </Text>
-      <View className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <View className="bg-white rounded-rm overflow-hidden" style={shadows.shS}>
         {logs.length === 0 ? (
-          <Text className="text-sm text-slate-400 p-4">No activity recorded yet.</Text>
+          <Text className="text-sm text-genki-faint p-4">No activity recorded yet.</Text>
         ) : (
           logs.map((log, i) => (
             <View
               key={log.id}
-              className={`px-4 py-3 ${i > 0 ? 'border-t border-slate-100' : ''}`}
+              className={`px-4 py-3 ${i > 0 ? 'border-t border-genki-border' : ''}`}
             >
               <View className="flex-row justify-between items-center">
-                <Text className="text-sm font-medium text-slate-700">
+                <Text className="text-sm font-medium text-genki-text">
                   {ACTION_LABELS[log.action] ?? log.action}
                 </Text>
-                <Text className="text-xs text-slate-400">{formatTimestamp(log.createdAt)}</Text>
+                <Text className="text-xs text-genki-faint">{formatTimestamp(log.createdAt)}</Text>
               </View>
             </View>
           ))

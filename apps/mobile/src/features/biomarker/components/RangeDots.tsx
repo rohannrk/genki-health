@@ -8,8 +8,8 @@ type Props = {
 };
 
 const DOTS = 35;
-const PRIMARY = '#15803d';
-const NEUTRAL = '#e2e8f0'; // slate-200
+const PRIMARY = '#2E7D52';
+const NEUTRAL = '#DCE5E0'; // soft green-grey track
 
 /** Linear interpolate a hex toward white-ish neutral for the in-range gradient. */
 function withAlpha(hex: string, a: number) {
@@ -72,8 +72,8 @@ export default function RangeDots({ value, refLow, refHigh }: Props) {
 
       {/* Reference-range bound labels, aligned under the colored band. */}
       <View className="flex-row justify-between mt-2" style={{ paddingHorizontal: '12%' }}>
-        <Text className="text-[12px] text-slate-400">{refLow}</Text>
-        <Text className="text-[12px] text-slate-400">{refHigh}</Text>
+        <Text className="text-[12px] text-genki-faint">{refLow}</Text>
+        <Text className="text-[12px] text-genki-faint">{refHigh}</Text>
       </View>
     </View>
   );

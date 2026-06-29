@@ -1,5 +1,11 @@
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
-import type { MedicalDocument, PatientProfile } from '../db';
+import type { MedicalDocument } from '../db';
+
+/** Minimal patient identity for the PDF cover page. */
+export interface PdfPatient {
+  name: string | null;
+  dob: string | null;
+}
 
 const PAGE_WIDTH = 595.28; // A4 in points
 const PAGE_HEIGHT = 841.89;
@@ -43,7 +49,7 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
  * embedding the original scanned files is a follow-up.
  */
 export async function buildRecordsPdf(
-  profile: Pick<PatientProfile, 'name' | 'dob' | 'relation'>,
+  profile: PdfPatient,
   documents: Array<
     Pick<MedicalDocument, 'type' | 'title' | 'date' | 'hospitalName' | 'doctorName' | 'extractedText'>
   >
@@ -85,8 +91,8 @@ export async function buildRecordsPdf(
 
   // Cover header
   drawLine('Medical Records Export', { size: 22, font: bold, gap: 6 });
-  drawLine(`Patient: ${profile.name}`, { size: 13, font: bold });
-  drawLine(`Date of birth: ${profile.dob}   ·   Relation: ${profile.relation}`, {
+  drawLine(`Patient: ${profile.name ?? 'Unknown'}`, { size: 13, font: bold });
+  drawLine(`Date of birth: ${profile.dob ?? '—'}`, {
     size: 10,
     color: rgb(0.4, 0.4, 0.45),
   });

@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSignIn } from '@clerk/clerk-expo';
-import { Ionicons } from '@expo/vector-icons';
+import { KeyRound, ArrowLeft } from 'lucide-react-native';
+import { shadows } from '../../src/theme/genki';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -53,7 +54,7 @@ export default function ForgotPasswordScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-slate-50"
+      className="flex-1 bg-genki-bg"
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
@@ -62,27 +63,27 @@ export default function ForgotPasswordScreen() {
       >
         <View className="flex-1 justify-center px-6 py-12">
           <View className="items-center mb-10">
-            <View className="w-16 h-16 rounded-2xl bg-slate-200 items-center justify-center mb-4">
-              <Ionicons name="key-outline" size={30} color="#334155" />
+            <View className="w-16 h-16 rounded-2xl bg-genki-gt items-center justify-center mb-4">
+              <KeyRound size={30} color="#1A3D2B" />
             </View>
-            <Text className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <Text className="text-3xl font-extrabold text-genki-text tracking-tight">
               Forgot password?
             </Text>
-            <Text className="text-sm text-slate-500 mt-2 text-center px-4">
+            <Text className="text-sm text-genki-muted mt-2 text-center px-4">
               Enter your email and we'll send you a reset code.
             </Text>
           </View>
 
-          <View className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          <View className="bg-white rounded-rl p-6" style={shadows.shS}>
             <View className="mb-6">
-              <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+              <Text className="text-xs font-semibold text-genki-muted uppercase tracking-wider mb-1.5">
                 Email address
               </Text>
               <TextInput
                 value={email}
                 onChangeText={setEmail}
                 placeholder="doctor@clinic.com"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor="#8FA495"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
@@ -90,13 +91,13 @@ export default function ForgotPasswordScreen() {
                 returnKeyType="done"
                 onSubmitEditing={handleSendReset}
                 editable={!sent}
-                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-base text-slate-900"
+                className="bg-genki-bg border border-genki-border rounded-rs px-4 py-3.5 text-base text-genki-text"
               />
             </View>
 
             {error ? (
-              <View className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
-                <Text className="text-red-600 text-sm font-medium">{error}</Text>
+              <View className="bg-[#FDECEA] rounded-rm px-4 py-3 mb-4">
+                <Text className="text-[#C0392B] text-sm font-medium">{error}</Text>
               </View>
             ) : null}
 
@@ -104,7 +105,7 @@ export default function ForgotPasswordScreen() {
               onPress={handleSendReset}
               disabled={isSubmitting || sent}
               activeOpacity={0.85}
-              className="bg-emerald-600 py-3.5 rounded-xl items-center justify-center"
+              className="bg-genki-g8 py-3.5 rounded-rm items-center justify-center"
               accessibilityLabel="Send reset link"
               accessibilityRole="button"
             >
@@ -122,8 +123,8 @@ export default function ForgotPasswordScreen() {
               accessibilityLabel="Back to sign in"
             >
               <View className="flex-row items-center gap-1">
-                <Ionicons name="arrow-back" size={14} color="#059669" />
-                <Text className="text-sm font-semibold text-emerald-600">Back to sign in</Text>
+                <ArrowLeft size={14} color="#1A3D2B" />
+                <Text className="text-sm font-semibold text-genki-g5">Back to sign in</Text>
               </View>
             </TouchableOpacity>
           </View>

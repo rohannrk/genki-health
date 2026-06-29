@@ -1,13 +1,13 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import axios from 'axios';
 import { requireAuth } from '../middleware/auth';
 import { getOrCreateUser } from '../middleware/getOrCreateUser';
 import { validate } from '../middleware/validate';
 import { encrypt } from '../lib/crypto';
 import { auditLogs } from '../db/schema/audit';
-import { patientProfiles } from '../db/schema/profiles';
+import { users } from '../db/schema/users';
 import { db } from '../db';
 
 const router = Router();
@@ -24,24 +24,10 @@ const validateKeySchema = {
 
 const saveKeySchema = {
   body: z.object({
-    profileId: z.string().uuid('Invalid profile ID'),
     provider: providerEnum,
     apiKey: z.string().min(10, 'API Key must be at least 10 characters long'),
   }),
 };
-
-const deleteKeySchema = {
-  params: z.object({
-    profileId: z.string().uuid('Invalid profile ID'),
-  }),
-};
-
-/** Verify the profile exists and belongs to the current user. */
-async function ownProfile(profileId: string, ownerId: string) {
-  return db.query.patientProfiles.findFirst({
-    where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, ownerId)),
-  });
-}
 
 router.post(
   '/validate',
@@ -150,26 +136,20 @@ router.post(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = req.dbUser!.id;
-      const { profileId, provider, apiKey } = req.body;
-
-      const profile = await ownProfile(profileId, userId);
-      if (!profile) {
-        res.status(403).json({ status: 'error', message: 'Profile not found or access denied' });
-        return;
-      }
+      const { provider, apiKey } = req.body;
 
       const encrypted = encrypt(apiKey);
       await db
-        .update(patientProfiles)
+        .update(users)
         .set({ encryptedApiKey: encrypted, aiProvider: provider })
-        .where(eq(patientProfiles.id, profileId));
+        .where(eq(users.id, userId));
 
       db.insert(auditLogs)
         .values({
           userId,
           action: 'AI_KEY_SAVED',
           documentIds: [],
-          metadata: { provider, profileId },
+          metadata: { provider },
           ipAddress: req.ip || null,
         })
         .catch((err) => console.error('Audit failed:', err));
@@ -185,36 +165,28 @@ router.post(
 );
 
 /**
- * DELETE /keys/:profileId
- * Clears the saved API key for a specific profile.
+ * DELETE /keys
+ * Clears the saved API key for the current user.
  */
 router.delete(
-  '/:profileId',
+  '/',
   requireAuth,
   getOrCreateUser,
-  validate(deleteKeySchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = req.dbUser!.id;
-      const { profileId } = req.params;
-
-      const profile = await ownProfile(profileId, userId);
-      if (!profile) {
-        res.status(403).json({ status: 'error', message: 'Profile not found or access denied' });
-        return;
-      }
 
       await db
-        .update(patientProfiles)
+        .update(users)
         .set({ encryptedApiKey: null, aiProvider: null })
-        .where(eq(patientProfiles.id, profileId));
+        .where(eq(users.id, userId));
 
       db.insert(auditLogs)
         .values({
           userId,
           action: 'AI_KEY_DELETED',
           documentIds: [],
-          metadata: { profileId },
+          metadata: {},
           ipAddress: req.ip || null,
         })
         .catch((err) => console.error('Audit failed:', err));

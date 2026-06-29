@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { eq, and, desc, count, inArray } from 'drizzle-orm';
 import { db, MedicalDocument } from '../db';
 import { medicalDocuments } from '../db/schema/documents';
-import { patientProfiles } from '../db/schema/profiles';
 import { logAudit } from '../services/audit';
 import { requireAuth } from '../middleware/auth';
 import { getOrCreateUser } from '../middleware/getOrCreateUser';
@@ -28,7 +27,6 @@ router.use(getOrCreateUser);
 
 const uploadUrlSchema = {
   body: z.object({
-    profileId: z.string().uuid('Invalid profile ID format'),
     filename: z.string().min(1, 'Filename is required').max(255),
     contentType: z.enum(['image/jpeg', 'image/png', 'application/pdf']),
     fileSize: z.number().int().positive('File size must be positive').max(20 * 1024 * 1024, 'File size must not exceed 20MB'),
@@ -43,7 +41,6 @@ const confirmSchema = {
 
 const listQuerySchema = {
   query: z.object({
-    profileId: z.string().uuid('profileId is required'),
     type: z.string().max(50).optional(),
     status: z.string().max(50).optional(),
     limit: z.coerce.number().max(100).default(20),
@@ -59,7 +56,6 @@ const uuidParamSchema = {
 
 const exportPdfSchema = {
   body: z.object({
-    profileId: z.string().uuid('Invalid profile ID format'),
     documentIds: z.array(z.string().uuid()).optional(),
   }),
 };
@@ -78,7 +74,7 @@ const formatDocument = async (doc: MedicalDocument, { includeDownloadUrl = true 
   const downloadUrl = includeDownloadUrl ? await getPresignedDownloadUrl(doc.fileKey) : undefined;
   return {
     id: doc.id,
-    profileId: doc.profileId,
+    userId: doc.userId,
     type: doc.type,
     status: doc.status,
     title: doc.title,
@@ -97,19 +93,10 @@ const verifyDocumentOwnership = async (
   userId: string
 ): Promise<MedicalDocument | null> => {
   const doc = await db.query.medicalDocuments.findFirst({
-    where: eq(medicalDocuments.id, documentId),
+    where: and(eq(medicalDocuments.id, documentId), eq(medicalDocuments.userId, userId)),
   });
 
-  if (!doc) return null;
-
-  // Check if current user owns the patient profile linked to this document
-  const profile = await db.query.patientProfiles.findFirst({
-    where: and(eq(patientProfiles.id, doc.profileId), eq(patientProfiles.ownerId, userId)),
-  });
-
-  if (!profile) return null;
-
-  return doc;
+  return doc ?? null;
 };
 
 /**
@@ -122,27 +109,15 @@ router.post(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = req.dbUser!.id;
-      const { profileId, filename, contentType, fileSize } = req.body;
+      const { filename, contentType, fileSize } = req.body;
 
-      const profile = await db.query.patientProfiles.findFirst({
-        where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, userId)),
-      });
-
-      if (!profile) {
-        res.status(403).json({
-          status: 'error',
-          message: 'Access denied: You do not own this patient profile',
-        });
-        return;
-      }
-
-      const fileKey = generateFileKey(profileId, filename);
+      const fileKey = generateFileKey(userId, filename);
       const uploadUrl = await getPresignedUploadUrl(fileKey, contentType);
 
       const [newDoc] = await db
         .insert(medicalDocuments)
         .values({
-          profileId,
+          userId,
           type: 'other',
           status: 'uploading',
           fileKey,
@@ -176,23 +151,12 @@ router.post(
   validate(exportPdfSchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const userId = req.dbUser!.id;
-      const { profileId, documentIds } = req.body as { profileId: string; documentIds?: string[] };
-
-      // Verify profile ownership.
-      const profile = await db.query.patientProfiles.findFirst({
-        where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, userId)),
-      });
-      if (!profile) {
-        res.status(403).json({
-          status: 'error',
-          message: 'Access denied: You do not own this patient profile',
-        });
-        return;
-      }
+      const user = req.dbUser!;
+      const userId = user.id;
+      const { documentIds } = req.body as { documentIds?: string[] };
 
       // Fetch documents — scoped to the requested IDs if provided, else all.
-      const filters = [eq(medicalDocuments.profileId, profileId)];
+      const filters = [eq(medicalDocuments.userId, userId)];
       if (documentIds && documentIds.length > 0) {
         filters.push(inArray(medicalDocuments.id, documentIds));
       }
@@ -206,8 +170,8 @@ router.post(
         return;
       }
 
-      const pdfBytes = await buildRecordsPdf(profile, docs);
-      const fileKey = `exports/${profileId}/${randomUUID()}.pdf`;
+      const pdfBytes = await buildRecordsPdf({ name: user.name, dob: user.dob }, docs);
+      const fileKey = `exports/${userId}/${randomUUID()}.pdf`;
       await uploadBuffer(fileKey, pdfBytes, 'application/pdf');
       const downloadUrl = await getPresignedDownloadUrl(fileKey);
 
@@ -215,7 +179,7 @@ router.post(
         userId,
         action: 'pdf_export',
         documentIds: docs.map((d) => d.id),
-        metadata: { profileId, count: docs.length },
+        metadata: { count: docs.length },
         req,
       });
 
@@ -333,23 +297,11 @@ router.get(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = req.dbUser!.id;
-      const { profileId, type, status, limit, offset } = req.query as {
-        profileId: string; type?: string; status?: string; limit?: number; offset?: number;
+      const { type, status, limit, offset } = req.query as {
+        type?: string; status?: string; limit?: number; offset?: number;
       };
 
-      const profile = await db.query.patientProfiles.findFirst({
-        where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, userId)),
-      });
-
-      if (!profile) {
-        res.status(403).json({
-          status: 'error',
-          message: 'Access denied: You do not own this patient profile',
-        });
-        return;
-      }
-
-      const filters = [eq(medicalDocuments.profileId, profileId)];
+      const filters = [eq(medicalDocuments.userId, userId)];
       if (type) {
         filters.push(eq(medicalDocuments.type, type));
       }

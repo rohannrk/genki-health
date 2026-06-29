@@ -49,19 +49,19 @@ export interface SummariseResponse {
 }
 
 export const ai = {
-  async chat(profileId: string, messages: ChatMessage[], token: string): Promise<ChatResponse> {
+  async chat(messages: ChatMessage[], token: string): Promise<ChatResponse> {
     const res = await post<{ data: ChatResponse }>(
       '/api/v1/ai/chat',
-      { profileId, messages },
+      { messages },
       token
     );
     return res.data;
   },
 
-  async search(profileId: string, query: string, token: string): Promise<SearchResult[]> {
+  async search(query: string, token: string): Promise<SearchResult[]> {
     const res = await post<{ data: { query: string; results: SearchResult[] } }>(
       '/api/v1/ai/search',
-      { profileId, query },
+      { query },
       token
     );
     return res.data.results;
@@ -76,19 +76,18 @@ export const ai = {
     return res.data;
   },
 
-  async getHistory(profileId: string, token: string): Promise<HistoryMessage[]> {
+  async getHistory(token: string): Promise<HistoryMessage[]> {
     const res = await get<{ data: { messages: HistoryMessage[] } }>(
-      `/api/v1/ai/history/${profileId}`,
+      `/api/v1/ai/history`,
       token
     );
     return res.data.messages;
   },
 
   async saveHistory(
-    profileId: string,
     messages: Array<{ role: 'user' | 'assistant'; content: string; sources?: ChatSource[] }>,
     token: string
   ): Promise<void> {
-    await post('/api/v1/ai/history', { profileId, messages }, token);
+    await post('/api/v1/ai/history', { messages }, token);
   },
 };

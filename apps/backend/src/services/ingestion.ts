@@ -2,7 +2,7 @@ import axios from 'axios';
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
 import { medicalDocuments } from '../db/schema/documents';
-import { patientProfiles } from '../db/schema/profiles';
+import { users } from '../db/schema/users';
 import { decrypt } from '../lib/crypto';
 import { getPresignedDownloadUrl } from './storage';
 import { generateAICompletion, AIProvider } from './ai-adapter';
@@ -89,23 +89,23 @@ async function runIngestion(documentId: string): Promise<void> {
 
   await setStage(documentId, 'queued');
 
-  const profile = await db.query.patientProfiles.findFirst({
-    where: eq(patientProfiles.id, doc.profileId),
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, doc.userId),
   });
-  if (!profile) {
-    console.error(`[ingestion] Profile not found for document ${documentId}`);
+  if (!user) {
+    console.error(`[ingestion] User not found for document ${documentId}`);
     await db.update(medicalDocuments).set({ status: 'error' }).where(eq(medicalDocuments.id, documentId));
-    await patchMetadata(documentId, { processingError: 'Patient profile not found' });
+    await patchMetadata(documentId, { processingError: 'User not found' });
     return;
   }
 
   let apiKey: string | null = null;
   let provider: AIProvider | null = null;
 
-  if (profile.encryptedApiKey && profile.aiProvider) {
+  if (user.encryptedApiKey && user.aiProvider) {
     try {
-      apiKey = decrypt(profile.encryptedApiKey);
-      provider = profile.aiProvider as AIProvider;
+      apiKey = decrypt(user.encryptedApiKey);
+      provider = user.aiProvider as AIProvider;
     } catch {
       console.warn('[ingestion] Could not decrypt API key');
     }
@@ -120,7 +120,7 @@ async function runIngestion(documentId: string): Promise<void> {
     await patchMetadata(documentId, {
       processingStage: 'done',
       processingError: null,
-      processingNote: 'Add an AI key for this family member in Settings to enable text extraction and search.',
+      processingNote: 'Add an AI key in Settings to enable text extraction and search.',
     });
     return;
   }
@@ -225,7 +225,7 @@ Do not omit any text from the document in the "text" field. Use null where a fie
   const measuredAt = (meta.date ?? doc.date ?? new Date().toISOString().slice(0, 10)).slice(0, 10);
   let biomarkerCount = 0;
   try {
-    biomarkerCount = await saveBiomarkerReadings(documentId, doc.profileId, measuredAt, rawBiomarkers);
+    biomarkerCount = await saveBiomarkerReadings(documentId, doc.userId, measuredAt, rawBiomarkers);
   } catch (err) {
     console.warn('[ingestion] Saving biomarkers failed:', err);
   }

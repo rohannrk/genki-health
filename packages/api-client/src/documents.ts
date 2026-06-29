@@ -22,13 +22,11 @@ export interface DocumentListOptions {
 }
 
 export interface ExportPdfInput {
-  profileId: string;
   documentIds?: string[];
 }
 
 export const documents = {
   async getUploadUrl(
-    profileId: string,
     filename: string,
     contentType: 'image/jpeg' | 'image/png' | 'application/pdf',
     fileSize: number,
@@ -36,7 +34,7 @@ export const documents = {
   ): Promise<UploadUrlResponse> {
     const res = await post<{ data: UploadUrlResponse }>(
       '/api/v1/documents/upload-url',
-      { profileId, filename, contentType, fileSize },
+      { filename, contentType, fileSize },
       token
     );
     return res.data;
@@ -51,8 +49,8 @@ export const documents = {
     return res.data;
   },
 
-  async list(profileId: string, token: string, opts: DocumentListOptions = {}): Promise<DocumentListResponse> {
-    const params = new URLSearchParams({ profileId });
+  async list(token: string, opts: DocumentListOptions = {}): Promise<DocumentListResponse> {
+    const params = new URLSearchParams();
     if (opts.type) params.set('type', opts.type);
     if (opts.status) params.set('status', opts.status);
     if (opts.limit != null) params.set('limit', String(opts.limit));

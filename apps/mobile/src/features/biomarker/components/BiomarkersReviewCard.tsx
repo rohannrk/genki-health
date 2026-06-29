@@ -7,9 +7,10 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Pencil, Check } from 'lucide-react-native';
 import { BiomarkerReading } from '@genki/types';
 import { statusMeta, formatValue, classifyStatus } from '../data';
+import { shadows } from '../../../theme/genki';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -45,8 +46,8 @@ function initialDraft(r: BiomarkerReading): Draft {
   return { value: formatValue(r.value) };
 }
 
-const PRIMARY = '#14532d';
-const PRIMARY_LIGHT = '#15803d';
+const PRIMARY = '#1A3D2B';
+const PRIMARY_LIGHT = '#2E7D52';
 
 // ─── Row (view mode) ──────────────────────────────────────────────────────────
 
@@ -57,18 +58,18 @@ function ViewRow({ reading }: { reading: BiomarkerReading }) {
     <View className="flex-row items-center py-3">
       {/* Name */}
       <View style={{ flex: 1 }}>
-        <Text className="text-sm font-semibold text-slate-800" numberOfLines={1}>
+        <Text className="text-sm font-semibold text-genki-text" numberOfLines={1}>
           {reading.name}
         </Text>
-        <Text className="text-xs text-slate-400 mt-0.5">
+        <Text className="text-xs text-genki-faint mt-0.5">
           {refRangeLabel(reading.refLow, reading.refHigh)}
         </Text>
       </View>
       {/* Value + unit */}
       <View style={{ alignItems: 'flex-end', marginRight: 12 }}>
-        <Text className="text-sm font-bold text-slate-900">
+        <Text className="text-sm font-bold text-genki-text">
           {formatValue(reading.value)}{' '}
-          <Text className="text-slate-400 font-normal">{reading.unit}</Text>
+          <Text className="text-genki-faint font-normal">{reading.unit}</Text>
         </Text>
       </View>
       {/* Status dot + label */}
@@ -103,10 +104,10 @@ function EditRow({
     <View className="flex-row items-center py-3">
       {/* Name + ref range (static) */}
       <View style={{ flex: 1 }}>
-        <Text className="text-sm font-semibold text-slate-800" numberOfLines={1}>
+        <Text className="text-sm font-semibold text-genki-text" numberOfLines={1}>
           {reading.name}
         </Text>
-        <Text className="text-xs text-slate-400 mt-0.5">
+        <Text className="text-xs text-genki-faint mt-0.5">
           {refRangeLabel(reading.refLow, reading.refHigh)}
         </Text>
       </View>
@@ -118,22 +119,22 @@ function EditRow({
           onChangeText={onChange}
           keyboardType="decimal-pad"
           placeholder="—"
-          placeholderTextColor="#cbd5e1"
+          placeholderTextColor="#8FA495"
           style={{
             width: 72,
             borderWidth: 1,
-            borderColor: '#14532d',
+            borderColor: '#1A3D2B',
             borderRadius: 8,
             paddingHorizontal: 8,
             paddingVertical: 6,
             fontSize: 14,
             fontWeight: '700',
-            color: '#0f172a',
+            color: '#0D1F14',
             textAlign: 'center',
-            backgroundColor: '#f0fdf4',
+            backgroundColor: '#E4F0EA',
           }}
         />
-        <Text className="text-sm text-slate-400" style={{ minWidth: 36 }}>
+        <Text className="text-sm text-genki-faint" style={{ minWidth: 36 }}>
           {reading.unit}
         </Text>
       </View>
@@ -207,16 +208,16 @@ export default function BiomarkersReviewCard({ readings, onSave }: Props) {
   if (readings.length === 0) return null;
 
   return (
-    <View className="bg-white rounded-2xl border border-slate-200 mb-4 overflow-hidden">
+    <View className="bg-white rounded-rl mb-4 overflow-hidden" style={shadows.shS}>
       {/* Card header */}
-      <View className="flex-row items-center justify-between px-4 pt-4 pb-3 border-b border-slate-100">
+      <View className="flex-row items-center justify-between px-4 pt-4 pb-3 border-b border-genki-border">
         <View className="flex-row items-center gap-2">
-          <Text className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+          <Text className="text-xs font-bold text-genki-faint uppercase tracking-widest">
             Lab Results
           </Text>
           <View
             style={{
-              backgroundColor: '#f0fdf4',
+              backgroundColor: '#E4F0EA',
               borderRadius: 10,
               paddingHorizontal: 7,
               paddingVertical: 2,
@@ -233,7 +234,7 @@ export default function BiomarkersReviewCard({ readings, onSave }: Props) {
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             className="flex-row items-center gap-1"
           >
-            <Ionicons name="create-outline" size={16} color={PRIMARY_LIGHT} />
+            <Pencil size={16} color={PRIMARY_LIGHT} />
             <Text style={{ fontSize: 13, color: PRIMARY_LIGHT, fontWeight: '600' }}>Edit</Text>
           </TouchableOpacity>
         ) : (
@@ -242,7 +243,7 @@ export default function BiomarkersReviewCard({ readings, onSave }: Props) {
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             disabled={saving}
           >
-            <Text className="text-slate-400 text-sm font-medium">Cancel</Text>
+            <Text className="text-genki-faint text-sm font-medium">Cancel</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -251,7 +252,7 @@ export default function BiomarkersReviewCard({ readings, onSave }: Props) {
       <View className="px-4">
         {readings.map((r, i) => (
           <View key={r.id}>
-            {i > 0 && <View className="border-t border-slate-100" />}
+            {i > 0 && <View className="border-t border-genki-border" />}
             {editing ? (
               <EditRow
                 reading={r}
@@ -267,18 +268,18 @@ export default function BiomarkersReviewCard({ readings, onSave }: Props) {
 
       {/* Save bar (edit mode only) */}
       {editing && (
-        <View className="px-4 pt-3 pb-4 border-t border-slate-100 mt-1">
+        <View className="px-4 pt-3 pb-4 border-t border-genki-border mt-1">
           <TouchableOpacity
             onPress={handleSave}
             disabled={saving}
             style={{ backgroundColor: PRIMARY }}
-            className="py-3 rounded-xl items-center"
+            className="py-3 rounded-rm items-center"
           >
             {saving ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <View className="flex-row items-center gap-2">
-                <Ionicons name="checkmark" size={16} color="#fff" />
+                <Check size={16} color="#fff" />
                 <Text className="text-white font-bold text-sm">Save corrections</Text>
               </View>
             )}

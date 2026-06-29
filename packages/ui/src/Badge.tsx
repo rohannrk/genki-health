@@ -12,17 +12,17 @@ export function Badge({ label, variant = 'default', className = '' }: BadgeProps
   let textStyle = 'text-xs font-semibold';
 
   if (variant === 'high') {
-    badgeStyle += ' bg-rose-50 border border-rose-100';
-    textStyle += ' text-rose-700';
+    badgeStyle += ' bg-[#FDECEA]';
+    textStyle += ' text-[#C0392B]';
   } else if (variant === 'med') {
-    badgeStyle += ' bg-amber-50 border border-amber-100';
-    textStyle += ' text-amber-700';
+    badgeStyle += ' bg-tag-rx';
+    textStyle += ' text-tag-rxText';
   } else if (variant === 'low') {
-    badgeStyle += ' bg-emerald-50 border border-emerald-100';
-    textStyle += ' text-emerald-700';
+    badgeStyle += ' bg-genki-gt';
+    textStyle += ' text-genki-g8';
   } else {
-    badgeStyle += ' bg-slate-50 border border-slate-200';
-    textStyle += ' text-slate-600';
+    badgeStyle += ' bg-genki-gtt';
+    textStyle += ' text-genki-muted';
   }
 
   return (

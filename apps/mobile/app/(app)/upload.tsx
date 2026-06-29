@@ -9,11 +9,11 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
-import { Ionicons } from '@expo/vector-icons';
+import { X, FileUp, Camera } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { documents as docsApi } from '@genki/api-client';
-import { useProfile } from '../../src/context/ProfileContext';
+import { colors } from '../../src/theme/genki';
 
 type PickedFile = {
   uri: string;
@@ -31,9 +31,7 @@ const MIME_LABELS: Record<string, string> = {
 export default function UploadScreen() {
   const router = useRouter();
   const { getToken } = useAuth();
-  const { activeProfile, profiles } = useProfile();
 
-  const [selectedProfile, setSelectedProfile] = useState(activeProfile ?? profiles[0] ?? null);
   const [pickedFile, setPickedFile] = useState<PickedFile | null>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -70,7 +68,7 @@ export default function UploadScreen() {
   };
 
   const handleUpload = async () => {
-    if (!pickedFile || !selectedProfile) return;
+    if (!pickedFile) return;
     setUploading(true);
     setProgress(0);
     try {
@@ -78,7 +76,6 @@ export default function UploadScreen() {
       if (!token) throw new Error('Not authenticated');
 
       const { documentId, uploadUrl } = await docsApi.getUploadUrl(
-        selectedProfile.id,
         pickedFile.name,
         pickedFile.mimeType,
         pickedFile.size,
@@ -99,89 +96,72 @@ export default function UploadScreen() {
   };
 
   return (
-    <View className="flex-1 bg-white">
-      <View className="flex-row items-center px-4 pt-14 pb-4 border-b border-slate-200">
+    <View className="flex-1 bg-genki-bg">
+      <View className="flex-row items-center px-4 pt-14 pb-4 bg-white" style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}>
         <TouchableOpacity onPress={() => router.back()} className="mr-4 p-1">
-          <Ionicons name="close" size={22} color="#64748b" />
+          <X size={22} color={colors.muted} />
         </TouchableOpacity>
-        <Text className="text-lg font-bold text-slate-900">Upload Document</Text>
+        <Text className="text-lg font-bold text-genki-text">Upload Document</Text>
       </View>
 
       <ScrollView className="flex-1 p-4">
-        <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Patient</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
-          {profiles.map(p => (
-            <TouchableOpacity
-              key={p.id}
-              onPress={() => setSelectedProfile(p)}
-              className={`mr-2 px-4 py-2 rounded-full border ${
-                selectedProfile?.id === p.id
-                  ? 'bg-slate-900 border-slate-900'
-                  : 'bg-white border-slate-200'
-              }`}
-            >
-              <Text className={`text-sm font-semibold ${selectedProfile?.id === p.id ? 'text-white' : 'text-slate-700'}`}>
-                {p.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Document</Text>
+        <Text className="text-[11px] font-bold text-genki-faint uppercase tracking-wider mb-2">Document</Text>
         <View className="flex-row gap-3 mb-6">
           <TouchableOpacity
             onPress={pickDocument}
-            className="flex-1 border-2 border-dashed border-slate-300 rounded-2xl py-6 items-center"
+            className="flex-1 bg-genki-gtt rounded-rl py-6 items-center"
+            style={{ borderWidth: 2, borderColor: 'rgba(26,61,43,0.2)', borderStyle: 'dashed' }}
           >
-            <Ionicons name="document-outline" size={32} color="#64748b" style={{ marginBottom: 4 }} />
-            <Text className="text-sm font-semibold text-slate-600">Pick File</Text>
-            <Text className="text-xs text-slate-400">PDF, JPG, PNG</Text>
+            <FileUp size={30} color={colors.g8} style={{ marginBottom: 6 }} />
+            <Text className="text-sm font-semibold text-genki-text">Pick File</Text>
+            <Text className="text-xs text-genki-faint">PDF, JPG, PNG</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={pickFromCamera}
-            className="flex-1 border-2 border-dashed border-slate-300 rounded-2xl py-6 items-center"
+            className="flex-1 bg-genki-gtt rounded-rl py-6 items-center"
+            style={{ borderWidth: 2, borderColor: 'rgba(26,61,43,0.2)', borderStyle: 'dashed' }}
           >
-            <Ionicons name="camera-outline" size={32} color="#64748b" style={{ marginBottom: 4 }} />
-            <Text className="text-sm font-semibold text-slate-600">Camera</Text>
-            <Text className="text-xs text-slate-400">Take photo</Text>
+            <Camera size={30} color={colors.g8} style={{ marginBottom: 6 }} />
+            <Text className="text-sm font-semibold text-genki-text">Camera</Text>
+            <Text className="text-xs text-genki-faint">Take photo</Text>
           </TouchableOpacity>
         </View>
 
         {pickedFile && (
-          <View className="bg-slate-50 rounded-2xl border border-slate-200 p-4 mb-6">
-            <Text className="text-sm font-bold text-slate-800" numberOfLines={1}>{pickedFile.name}</Text>
-            <Text className="text-xs text-slate-400 mt-1">
+          <View className="bg-genki-gt rounded-rl p-4 mb-6">
+            <Text className="text-sm font-bold text-genki-text" numberOfLines={1}>{pickedFile.name}</Text>
+            <Text className="text-xs text-genki-muted mt-1">
               {MIME_LABELS[pickedFile.mimeType]} · {(pickedFile.size / 1024).toFixed(1)} KB
             </Text>
             {uploading && (
               <View className="mt-3">
-                <View className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                <View className="h-1.5 bg-white rounded-full overflow-hidden">
                   <View
-                    className="h-full bg-emerald-600 rounded-full"
+                    className="h-full bg-genki-g8 rounded-full"
                     style={{ width: `${progress}%` }}
                   />
                 </View>
-                <Text className="text-xs text-slate-400 mt-1">{progress}%</Text>
+                <Text className="text-xs text-genki-muted mt-1">{progress}%</Text>
               </View>
             )}
           </View>
         )}
       </ScrollView>
 
-      <View className="p-4 border-t border-slate-200">
+      <View className="p-4 bg-white" style={{ borderTopWidth: 1, borderTopColor: colors.border }}>
         <TouchableOpacity
           onPress={handleUpload}
-          disabled={!pickedFile || !selectedProfile || uploading}
-          className={`py-4 rounded-2xl items-center ${
-            pickedFile && selectedProfile && !uploading ? 'bg-emerald-600' : 'bg-slate-200'
+          disabled={!pickedFile || uploading}
+          className={`py-4 rounded-rm items-center ${
+            pickedFile && !uploading ? 'bg-genki-g8' : 'bg-genki-gt'
           }`}
           activeOpacity={0.85}
         >
           {uploading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text className={`text-base font-bold ${pickedFile && selectedProfile ? 'text-white' : 'text-slate-400'}`}>
+            <Text className={`text-base font-bold ${pickedFile ? 'text-white' : 'text-genki-faint'}`}>
               Upload
             </Text>
           )}

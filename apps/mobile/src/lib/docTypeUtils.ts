@@ -1,9 +1,14 @@
-import { Ionicons } from '@expo/vector-icons';
+import { FlaskConical, Pill, ScanLine, Receipt, FileText, LucideIcon } from 'lucide-react-native';
 
-export const DOC_TYPE_ICON_NAMES: Record<string, keyof typeof Ionicons.glyphMap> = {
-  prescription: 'medkit-outline',
-  lab: 'flask-outline',
-  imaging: 'scan-outline',
-  invoice: 'receipt-outline',
-  other: 'document-text-outline',
+/** Document type → Lucide icon component. */
+export const DOC_TYPE_ICONS: Record<string, LucideIcon> = {
+  prescription: Pill,
+  lab: FlaskConical,
+  imaging: ScanLine,
+  invoice: Receipt,
+  other: FileText,
 };
+
+export function docTypeIcon(type: string): LucideIcon {
+  return DOC_TYPE_ICONS[type] ?? FileText;
+}

@@ -7,7 +7,7 @@ import { hasSeenOnboarding } from '../../src/lib/storage';
 
 export default function AppLayout() {
   const { isSignedIn, isLoaded } = useAuth();
-  const { profiles, isLoading } = useProfile();
+  const { hasProfile, isLoading } = useProfile();
   const segments = useSegments();
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [seenOnboarding, setSeenOnboarding] = useState(false);
@@ -32,7 +32,7 @@ export default function AppLayout() {
   }
 
   const onCreateProfile = segments[segments.length - 1] === 'create-profile';
-  if (profiles.length === 0 && !onCreateProfile) {
+  if (!hasProfile && !onCreateProfile) {
     return <Redirect href="/(app)/create-profile" />;
   }
 
@@ -52,8 +52,8 @@ export default function AppLayout() {
 
 function LoadingScreen() {
   return (
-    <View className="flex-1 items-center justify-center bg-slate-50">
-      <ActivityIndicator color="#059669" size="large" />
+    <View className="flex-1 items-center justify-center bg-genki-bg">
+      <ActivityIndicator color="#1A3D2B" size="large" />
     </View>
   );
 }

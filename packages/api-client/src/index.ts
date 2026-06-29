@@ -1,6 +1,6 @@
 export { get, post, patch, del, getBaseUrl } from './http';
-export { profiles } from './profiles';
-export type { CreateProfileInput } from './profiles';
+export { me } from './me';
+export type { UpdateMeInput } from './me';
 export { documents } from './documents';
 export type {
   UploadUrlResponse,
@@ -10,7 +10,7 @@ export type {
 } from './documents';
 export { biomarkers } from './biomarkers';
 export { ai } from './ai';
-export type { ChatMessage, SearchResult, ChatSource, ChatResponse, SummariseResponse } from './ai';
+export type { ChatMessage, SearchResult, ChatSource, ChatResponse, SummariseResponse, HistoryMessage } from './ai';
 export { audit } from './audit';
 export type { AuditListParams, AuditListResult } from './audit';
 export { consent } from './consent';

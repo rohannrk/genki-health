@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import authRouter from './auth';
-import profilesRouter from './profiles';
 import documentsRouter from './documents';
 import biomarkersRouter from './biomarkers';
 import aiRouter from './ai';
@@ -18,7 +17,6 @@ router.use('/share', publicShareRouter);
 
 // Register routers
 router.use('/auth', authRouter);
-router.use('/profiles', profilesRouter);
 router.use('/documents', documentsRouter);
 router.use('/biomarkers', biomarkersRouter);
 router.use('/ai', aiRouter);

@@ -19,7 +19,7 @@ vi.mock('@clerk/express', () => ({
 }));
 
 vi.mock('./services/storage', () => ({
-  generateFileKey: (profileId: string, filename: string) => `documents/${profileId}/test/${filename}`,
+  generateFileKey: (ownerId: string, filename: string) => `documents/${ownerId}/test/${filename}`,
   getPresignedUploadUrl: async () => 'https://r2.test/upload-url',
   getPresignedDownloadUrl: async (key: string) => `https://r2.test/download/${encodeURIComponent(key)}`,
   uploadBuffer: async () => undefined,
@@ -32,7 +32,6 @@ let app: any;
 let db: any;
 let schema: any;
 let userId: string;
-let profileId: string;
 let docId: string;
 
 const API = '/api/v1';
@@ -59,7 +58,7 @@ beforeAll(async () => {
   schema = await import('./db');
   db = schema.db;
 
-  // Clean slate: removing the user cascades to profiles/documents/shares.
+  // Clean slate: removing the user cascades to documents/biomarkers/chat/shares.
   await db.delete(schema.users).where(eq(schema.users.clerkId, TEST_CLERK_ID));
 });
 
@@ -70,13 +69,12 @@ afterAll(async () => {
 });
 
 describe.runIf(dbEnabled)('Phase 5 — end-to-end backend flows (real routes + DB)', () => {
-  it('creates a patient profile (and auto-provisions the DB user)', async () => {
+  it('sets up the user\'s own profile (about you) and auto-provisions the DB user', async () => {
     const res = await request(app)
-      .post(`${API}/profiles`)
-      .send({ name: 'Verify Patient', dob: '1990-01-01', relation: 'self' });
-    expect(res.status).toBe(201);
+      .patch(`${API}/account/me`)
+      .send({ name: 'Verify Patient', dob: '1990-01-01' });
+    expect(res.status).toBe(200);
     expect(res.body.data.name).toBe('Verify Patient');
-    profileId = res.body.data.id;
 
     const user = await db.query.users.findFirst({ where: eq(schema.users.clerkId, TEST_CLERK_ID) });
     expect(user).toBeTruthy();
@@ -94,11 +92,11 @@ describe.runIf(dbEnabled)('Phase 5 — end-to-end backend flows (real routes + D
     expect(patched.body.data.consentUpdatedAt).toBeTruthy();
   });
 
-  it('audit log captures the profile creation and consent change', async () => {
+  it('audit log captures the profile update and consent change', async () => {
     const res = await request(app).get(`${API}/audit?limit=50`);
     expect(res.status).toBe(200);
     const actions = res.body.data.logs.map((l: any) => l.action);
-    expect(actions).toContain('create_profile');
+    expect(actions).toContain('update_profile');
     expect(actions).toContain('consent_updated');
   });
 
@@ -107,7 +105,7 @@ describe.runIf(dbEnabled)('Phase 5 — end-to-end backend flows (real routes + D
     const [doc] = await db
       .insert(schema.medicalDocuments)
       .values({
-        profileId,
+        userId,
         type: 'lab',
         status: 'ready',
         date: '2026-05-01',
@@ -121,7 +119,7 @@ describe.runIf(dbEnabled)('Phase 5 — end-to-end backend flows (real routes + D
     // Create share
     const created = await request(app)
       .post(`${API}/shares`)
-      .send({ profileId, documentIds: [docId], expiresInHours: 1 });
+      .send({ documentIds: [docId], expiresInHours: 1 });
     expect(created.status).toBe(201);
     const { token, id: shareId, url } = created.body.data;
     expect(url).toContain(`/share/${token}`);
@@ -142,7 +140,7 @@ describe.runIf(dbEnabled)('Phase 5 — end-to-end backend flows (real routes + D
     // A fresh share, force-expired in the DB → redemption 410
     const created2 = await request(app)
       .post(`${API}/shares`)
-      .send({ profileId, documentIds: [docId], expiresInHours: 1 });
+      .send({ documentIds: [docId], expiresInHours: 1 });
     const token2 = created2.body.data.token;
     await db
       .update(schema.shares)
@@ -155,13 +153,13 @@ describe.runIf(dbEnabled)('Phase 5 — end-to-end backend flows (real routes + D
   it('PDF export returns a presigned download URL', async () => {
     const res = await request(app)
       .post(`${API}/documents/export-pdf`)
-      .send({ profileId, documentIds: [docId] });
+      .send({ documentIds: [docId] });
     expect(res.status).toBe(200);
     expect(res.body.data.downloadUrl).toContain('r2.test/download');
   });
 
   it('FHIR export returns a valid R4 Bundle', async () => {
-    const res = await request(app).get(`${API}/profiles/${profileId}/fhir`);
+    const res = await request(app).get(`${API}/account/fhir`);
     expect(res.status).toBe(200);
     expect(res.body.resourceType).toBe('Bundle');
     expect(res.body.type).toBe('collection');
@@ -182,10 +180,10 @@ describe.runIf(dbEnabled)('Phase 5 — end-to-end backend flows (real routes + D
     const res = await request(app).delete(`${API}/account`);
     expect(res.status).toBe(204);
 
-    const profiles = await db.query.patientProfiles.findMany({
-      where: eq(schema.patientProfiles.ownerId, userId),
+    const docs = await db.query.medicalDocuments.findMany({
+      where: eq(schema.medicalDocuments.userId, userId),
     });
-    expect(profiles).toHaveLength(0);
+    expect(docs).toHaveLength(0);
 
     const deletedUser = await db.query.users.findFirst({ where: eq(schema.users.id, userId) });
     expect(deletedUser).toBeUndefined();

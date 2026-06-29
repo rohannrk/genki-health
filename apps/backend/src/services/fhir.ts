@@ -1,4 +1,11 @@
-import type { MedicalDocument, PatientProfile } from '../db';
+import type { MedicalDocument } from '../db';
+
+/** Minimal patient identity for a FHIR Patient resource. */
+export interface FhirPatient {
+  id: string;
+  name: string | null;
+  dob: string | null;
+}
 
 /**
  * Maps an internal document type to a FHIR DocumentReference type.text label.
@@ -28,14 +35,14 @@ export interface FhirDocumentInput {
  * Pure JSON — no FHIR library dependency.
  */
 export function buildFhirBundle(
-  profile: Pick<PatientProfile, 'id' | 'name' | 'dob'>,
+  profile: FhirPatient,
   entries: FhirDocumentInput[]
 ): Record<string, unknown> {
   const patientResource = {
     resourceType: 'Patient',
     id: profile.id,
-    name: [{ text: profile.name }],
-    birthDate: profile.dob,
+    name: [{ text: profile.name ?? 'Unknown' }],
+    birthDate: profile.dob ?? undefined,
   };
 
   const bundleEntries: Array<Record<string, unknown>> = [

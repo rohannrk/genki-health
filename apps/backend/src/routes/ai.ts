@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { eq, and, sql, asc } from 'drizzle-orm';
 import axios from 'axios';
 import { db } from '../db';
-import { patientProfiles } from '../db/schema/profiles';
 import { medicalDocuments } from '../db/schema/documents';
 import { auditLogs } from '../db/schema/audit';
 import { chatMessages } from '../db/schema/chat';
@@ -26,7 +25,6 @@ router.use(getOrCreateUser);
 
 const chatSchema = {
   body: z.object({
-    profileId: z.string().uuid(),
     messages: z.array(z.object({
       role: z.enum(['user', 'assistant']),
       content: z.string().min(1),
@@ -42,7 +40,6 @@ const summariseSchema = {
 
 const searchSchema = {
   body: z.object({
-    profileId: z.string().uuid(),
     query: z.string().min(1),
   }),
 };
@@ -52,23 +49,23 @@ const searchSchema = {
 // ---------------------------------------------------------------------------
 
 function getDecryptedKey(
-  profile: { encryptedApiKey: string | null; aiProvider: string | null } | null | undefined
+  owner: { encryptedApiKey: string | null; aiProvider: string | null } | null | undefined
 ): { apiKey: string; provider: AIProvider } | null {
-  if (!profile?.encryptedApiKey || !profile?.aiProvider) return null;
+  if (!owner?.encryptedApiKey || !owner?.aiProvider) return null;
   try {
-    return { apiKey: decrypt(profile.encryptedApiKey), provider: profile.aiProvider as AIProvider };
+    return { apiKey: decrypt(owner.encryptedApiKey), provider: owner.aiProvider as AIProvider };
   } catch {
     return null;
   }
 }
 
-async function retrieveSimilarDocs(profileId: string, queryVec: number[], limit = 5) {
+async function retrieveSimilarDocs(userId: string, queryVec: number[], limit = 5) {
   const vecLiteral = `[${queryVec.join(',')}]`;
   const rows = await db.execute(
     sql`SELECT id, type, status, title, date, hospital_name, doctor_name, extracted_text, metadata,
                1 - (embedding <=> ${vecLiteral}::vector) AS score
         FROM medical_documents
-        WHERE profile_id = ${profileId}::uuid
+        WHERE user_id = ${userId}::uuid
           AND status = 'ready'
           AND embedding IS NOT NULL
         ORDER BY embedding <=> ${vecLiteral}::vector
@@ -126,22 +123,14 @@ router.post(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = req.dbUser!.id;
-      const { profileId, query } = req.body;
+      const { query } = req.body;
 
-      const profile = await db.query.patientProfiles.findFirst({
-        where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, userId)),
-      });
-      if (!profile) {
-        res.status(404).json({ status: 'error', message: 'Profile not found or access denied' });
-        return;
-      }
-
-      const creds = getDecryptedKey(profile);
+      const creds = getDecryptedKey(req.dbUser);
 
       db.insert(auditLogs).values({
         userId, action: 'AI_SEARCH_INVOKED',
         documentIds: [],
-        metadata: { profileId, query: query.slice(0, 100) },
+        metadata: { query: query.slice(0, 100) },
         ipAddress: req.ip || null,
       }).catch(() => {});
 
@@ -153,7 +142,7 @@ router.post(
         const queryVec = await embedText(query, geminiKey);
 
         if (queryVec) {
-          const rows = await retrieveSimilarDocs(profileId, queryVec, 10);
+          const rows = await retrieveSimilarDocs(userId, queryVec, 10);
           results = rows.map(r => ({
             documentId: r.id,
             type: r.type,
@@ -169,7 +158,7 @@ router.post(
       // Keyword fallback when no embeddings available
       if (results.length === 0) {
         const docs = await db.query.medicalDocuments.findMany({
-          where: and(eq(medicalDocuments.profileId, profileId), eq(medicalDocuments.status, 'ready')),
+          where: and(eq(medicalDocuments.userId, userId), eq(medicalDocuments.status, 'ready')),
           limit: 20,
         });
         const lower = query.toLowerCase();
@@ -207,29 +196,21 @@ router.post(
       const { documentId } = req.body;
 
       const doc = await db.query.medicalDocuments.findFirst({
-        where: eq(medicalDocuments.id, documentId),
+        where: and(eq(medicalDocuments.id, documentId), eq(medicalDocuments.userId, userId)),
       });
       if (!doc) {
         res.status(404).json({ status: 'error', message: 'Document not found' });
         return;
       }
 
-      const profile = await db.query.patientProfiles.findFirst({
-        where: and(eq(patientProfiles.id, doc.profileId), eq(patientProfiles.ownerId, userId)),
-      });
-      if (!profile) {
-        res.status(403).json({ status: 'error', message: 'Access denied' });
-        return;
-      }
-
       db.insert(auditLogs).values({
         userId, action: 'AI_SUMMARISE_INVOKED',
         documentIds: [documentId],
-        metadata: { type: doc.type, profileId: doc.profileId },
+        metadata: { type: doc.type },
         ipAddress: req.ip || null,
       }).catch(() => {});
 
-      const creds = getDecryptedKey(profile);
+      const creds = getDecryptedKey(req.dbUser);
       let summary = '';
 
       if (creds && doc.extractedText) {
@@ -288,23 +269,15 @@ router.post(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = req.dbUser!.id;
-      const { profileId, messages } = req.body;
+      const { messages } = req.body;
 
-      const profile = await db.query.patientProfiles.findFirst({
-        where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, userId)),
-      });
-      if (!profile) {
-        res.status(404).json({ status: 'error', message: 'Profile not found or access denied' });
-        return;
-      }
-
-      const creds = getDecryptedKey(profile);
+      const creds = getDecryptedKey(req.dbUser);
       const lastUserMessage: string = messages.filter((m: { role: string }) => m.role === 'user').at(-1)?.content ?? '';
 
       db.insert(auditLogs).values({
         userId, action: 'AI_CHAT_INVOKED',
         documentIds: [],
-        metadata: { profileId, query: lastUserMessage.slice(0, 100) },
+        metadata: { query: lastUserMessage.slice(0, 100) },
         ipAddress: req.ip || null,
       }).catch(() => {});
 
@@ -327,10 +300,10 @@ router.post(
       let contextDocs: Awaited<ReturnType<typeof retrieveSimilarDocs>> = [];
 
       if (queryVec) {
-        contextDocs = await retrieveSimilarDocs(profileId, queryVec, 6);
+        contextDocs = await retrieveSimilarDocs(userId, queryVec, 6);
       } else {
         const recent = await db.query.medicalDocuments.findMany({
-          where: and(eq(medicalDocuments.profileId, profileId), eq(medicalDocuments.status, 'ready')),
+          where: and(eq(medicalDocuments.userId, userId), eq(medicalDocuments.status, 'ready')),
           limit: 6,
         });
         contextDocs = recent.map(d => ({
@@ -358,7 +331,7 @@ router.post(
         ? `\n\nWEB SEARCH (up-to-date clinical reference):\n${webContext}`
         : '';
 
-      const systemPrompt = `You are Genki, a knowledgeable clinical AI assistant for ${profile.name}'s health records.
+      const systemPrompt = `You are Genki, a knowledgeable clinical AI assistant for ${req.dbUser!.name ?? 'the user'}'s health records.
 
 Your role:
 - Answer questions about the patient's records accurately, citing source documents as [Doc: <id>] inline.
@@ -402,28 +375,19 @@ ${recordsBlock || 'No processed records available yet. Upload documents and wait
 );
 
 // ---------------------------------------------------------------------------
-// GET /ai/history/:profileId
+// GET /ai/history
 // ---------------------------------------------------------------------------
 
 router.get(
-  '/history/:profileId',
+  '/history',
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = req.dbUser!.id;
-      const { profileId } = req.params;
-
-      const profile = await db.query.patientProfiles.findFirst({
-        where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, userId)),
-      });
-      if (!profile) {
-        res.status(404).json({ status: 'error', message: 'Profile not found or access denied' });
-        return;
-      }
 
       const rows = await db
         .select()
         .from(chatMessages)
-        .where(eq(chatMessages.profileId, profileId))
+        .where(eq(chatMessages.userId, userId))
         .orderBy(asc(chatMessages.createdAt))
         .limit(200);
 
@@ -438,7 +402,7 @@ router.get(
       const currentTitles = new Map<string, string | null>();
       if (docIds.size > 0) {
         const docs = await db.query.medicalDocuments.findMany({
-          where: eq(medicalDocuments.profileId, profileId),
+          where: eq(medicalDocuments.userId, userId),
           columns: { id: true, title: true },
         });
         docs.forEach(d => currentTitles.set(d.id, d.title));
@@ -466,7 +430,6 @@ router.get(
 
 const saveHistorySchema = {
   body: z.object({
-    profileId: z.string().uuid(),
     messages: z.array(z.object({
       role: z.enum(['user', 'assistant']),
       content: z.string().min(1),
@@ -487,19 +450,11 @@ router.post(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = req.dbUser!.id;
-      const { profileId, messages } = req.body;
-
-      const profile = await db.query.patientProfiles.findFirst({
-        where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, userId)),
-      });
-      if (!profile) {
-        res.status(404).json({ status: 'error', message: 'Profile not found or access denied' });
-        return;
-      }
+      const { messages } = req.body;
 
       await db.insert(chatMessages).values(
         messages.map((m: { role: string; content: string; sources?: unknown }) => ({
-          profileId,
+          userId,
           role: m.role,
           content: m.content,
           sources: m.sources ?? null,

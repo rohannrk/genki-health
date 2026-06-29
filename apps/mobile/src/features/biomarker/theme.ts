@@ -12,5 +12,5 @@ export const SERIF = Platform.select({
   default: 'Georgia, "Times New Roman", serif',
 }) as string;
 
-export const INK = '#0f172a'; // slate-900
-export const MUTED = '#94a3b8'; // slate-400
+export const INK = '#0D1F14'; // genki text
+export const MUTED = '#8FA495'; // genki faint

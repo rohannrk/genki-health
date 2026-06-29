@@ -7,10 +7,10 @@ import {
 } from '@genki/types';
 
 export const biomarkers = {
-  /** Latest reading per biomarker for a profile (Home list/grid). */
-  async list(profileId: string, token: string): Promise<BiomarkerSummary[]> {
+  /** Latest reading per biomarker for the user (Home list/grid). */
+  async list(token: string): Promise<BiomarkerSummary[]> {
     const res = await get<{ data: { biomarkers: BiomarkerSummary[] } }>(
-      `/api/v1/biomarkers?profileId=${encodeURIComponent(profileId)}`,
+      `/api/v1/biomarkers`,
       token
     );
     return res.data.biomarkers;
@@ -19,10 +19,9 @@ export const biomarkers = {
   /** All readings extracted from a specific document (for the review/edit card). */
   async listByDocument(
     documentId: string,
-    profileId: string,
     token: string
   ): Promise<BiomarkerReading[]> {
-    const params = new URLSearchParams({ profileId, documentId });
+    const params = new URLSearchParams({ documentId });
     const res = await get<{ data: { readings: BiomarkerReading[] } }>(
       `/api/v1/biomarkers?${params}`,
       token
@@ -31,9 +30,9 @@ export const biomarkers = {
   },
 
   /** Detail for one biomarker: latest value, reference range, delta, history. */
-  async get(code: string, profileId: string, token: string): Promise<BiomarkerDetail> {
+  async get(code: string, token: string): Promise<BiomarkerDetail> {
     const res = await get<{ data: BiomarkerDetail }>(
-      `/api/v1/biomarkers/${encodeURIComponent(code)}?profileId=${encodeURIComponent(profileId)}`,
+      `/api/v1/biomarkers/${encodeURIComponent(code)}`,
       token
     );
     return res.data;

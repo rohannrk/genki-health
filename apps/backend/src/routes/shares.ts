@@ -4,7 +4,6 @@ import { eq, and, desc, inArray } from 'drizzle-orm';
 import { randomBytes } from 'crypto';
 import { db } from '../db';
 import { shares } from '../db/schema/shares';
-import { patientProfiles } from '../db/schema/profiles';
 import { medicalDocuments } from '../db/schema/documents';
 import { requireAuth } from '../middleware/auth';
 import { getOrCreateUser } from '../middleware/getOrCreateUser';
@@ -18,7 +17,6 @@ router.use(getOrCreateUser);
 
 const createSchema = {
   body: z.object({
-    profileId: z.string().uuid('Invalid profile ID format'),
     documentIds: z.array(z.string().uuid()).min(1, 'Select at least one document'),
     expiresInHours: z.number().int().positive().max(24 * 30).default(72),
   }),
@@ -38,7 +36,6 @@ function shareUrl(req: Request, token: string): string {
 function formatShare(req: Request, share: typeof shares.$inferSelect) {
   return {
     id: share.id,
-    profileId: share.profileId,
     documentIds: share.documentIds,
     token: share.token,
     url: shareUrl(req, share.token),
@@ -59,21 +56,12 @@ router.post(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = req.dbUser!.id;
-      const { profileId, documentIds, expiresInHours } = req.body;
+      const { documentIds, expiresInHours } = req.body;
 
-      // Verify profile ownership.
-      const profile = await db.query.patientProfiles.findFirst({
-        where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, userId)),
-      });
-      if (!profile) {
-        res.status(403).json({ status: 'error', message: 'Access denied: You do not own this profile' });
-        return;
-      }
-
-      // Verify every requested document belongs to this profile.
+      // Verify every requested document belongs to this user.
       const docs = await db.query.medicalDocuments.findMany({
         where: and(
-          eq(medicalDocuments.profileId, profileId),
+          eq(medicalDocuments.userId, userId),
           inArray(medicalDocuments.id, documentIds)
         ),
         columns: { id: true },
@@ -81,7 +69,7 @@ router.post(
       if (docs.length !== documentIds.length) {
         res.status(400).json({
           status: 'error',
-          message: 'One or more documents do not belong to this profile',
+          message: 'One or more documents do not belong to you',
         });
         return;
       }
@@ -91,7 +79,7 @@ router.post(
 
       const [share] = await db
         .insert(shares)
-        .values({ ownerId: userId, profileId, documentIds, token, expiresAt })
+        .values({ ownerId: userId, documentIds, token, expiresAt })
         .returning();
 
       logAudit({

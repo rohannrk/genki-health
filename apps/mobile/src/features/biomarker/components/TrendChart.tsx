@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronUp, ChevronDown } from 'lucide-react-native';
 import { SERIF } from '../theme';
 import { BiomarkerStatus } from '../data';
 
@@ -15,9 +15,9 @@ type Props = {
 };
 
 const PLOT_HEIGHT = 168;
-const PRIMARY = '#166534';
-const AMBER = '#b45309';
-const NEUTRAL = '#94a3b8';
+const PRIMARY = '#2E7D52';
+const AMBER = '#C47E1A';
+const NEUTRAL = '#8FA495';
 const TICKS = 5;
 
 /** Dot color by the point's own status: green in-range, amber out, grey unknown. */
@@ -77,17 +77,17 @@ export default function TrendChart({ data, unit, delta, refLow, refHigh }: Props
       {/* Delta (omitted when there's only one reading) */}
       {delta != null && (
         <View className="flex-row items-center mb-3">
-          <Ionicons
-            name={positive ? 'caret-up' : 'caret-down'}
-            size={16}
-            color={positive ? PRIMARY : '#b45309'}
-          />
+          {positive ? (
+            <ChevronUp size={16} color={PRIMARY} />
+          ) : (
+            <ChevronDown size={16} color={AMBER} />
+          )}
           <Text
             style={{
               fontFamily: SERIF,
               fontSize: 20,
               marginLeft: 4,
-              color: positive ? PRIMARY : '#b45309',
+              color: positive ? PRIMARY : AMBER,
             }}
           >
             {Math.abs(delta)} {unit}
@@ -99,7 +99,7 @@ export default function TrendChart({ data, unit, delta, refLow, refHigh }: Props
       <View className="flex-row">
         <View style={{ height: PLOT_HEIGHT, justifyContent: 'space-between', width: 30 }}>
           {ticks.map((t, i) => (
-            <Text key={i} className="text-[10px] text-slate-300 text-right">
+            <Text key={i} className="text-[10px] text-genki-faint text-right">
               {fmtTick(t)}
             </Text>
           ))}
@@ -160,8 +160,8 @@ export default function TrendChart({ data, unit, delta, refLow, refHigh }: Props
       {/* X axis labels */}
       {n > 1 && (
         <View className="flex-row justify-between mt-2" style={{ marginLeft: 36 }}>
-          <Text className="text-[10px] text-slate-300">{fmtMonth(data[0]?.measuredAt)}</Text>
-          <Text className="text-[10px] text-slate-300">{fmtMonth(data[n - 1]?.measuredAt)}</Text>
+          <Text className="text-[10px] text-genki-faint">{fmtMonth(data[0]?.measuredAt)}</Text>
+          <Text className="text-[10px] text-genki-faint">{fmtMonth(data[n - 1]?.measuredAt)}</Text>
         </View>
       )}
     </View>

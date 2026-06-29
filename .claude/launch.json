@@ -5,13 +5,14 @@
       "name": "Backend API",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@genki/backend", "dev"],
-      "port": 8000
+      "port": 8000,
+      "autoPort": false
     },
     {
       "name": "Mobile (Expo)",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@genki/mobile", "start", "--", "--port", "8082"],
-      "port": 8082,
+      "runtimeArgs": ["--filter", "@genki/mobile", "start", "--", "--port", "8081", "--clear"],
+      "port": 8081,
       "autoPort": false
     },
     {

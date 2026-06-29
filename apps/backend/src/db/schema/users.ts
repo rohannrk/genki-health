@@ -1,9 +1,12 @@
-import { pgTable, uuid, varchar, text, boolean, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, boolean, date, timestamp } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   clerkId: varchar('clerk_id', { length: 255 }).notNull().unique(),
   email: varchar('email', { length: 255 }).unique(),
+  // The user is their own single patient ("about you"). Captured once at setup.
+  name: varchar('name', { length: 255 }),
+  dob: date('dob'),
   encryptedApiKey: text('encrypted_api_key'),
   aiProvider: varchar('ai_provider', { length: 20 }),
   isActive: boolean('is_active').notNull().default(true),

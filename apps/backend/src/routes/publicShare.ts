@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { eq, and, inArray } from 'drizzle-orm';
 import { db } from '../db';
 import { shares } from '../db/schema/shares';
-import { patientProfiles } from '../db/schema/profiles';
+import { users } from '../db/schema/users';
 import { medicalDocuments } from '../db/schema/documents';
 import { validate } from '../middleware/validate';
 import { logAudit } from '../services/audit';
@@ -47,15 +47,15 @@ router.get(
         return;
       }
 
-      const profile = await db.query.patientProfiles.findFirst({
-        where: eq(patientProfiles.id, share.profileId),
+      const owner = await db.query.users.findFirst({
+        where: eq(users.id, share.ownerId),
       });
 
       // Fetch only the documents scoped to this share.
       const docs = share.documentIds.length
         ? await db.query.medicalDocuments.findMany({
             where: and(
-              eq(medicalDocuments.profileId, share.profileId),
+              eq(medicalDocuments.userId, share.ownerId),
               inArray(medicalDocuments.id, share.documentIds)
             ),
           })
@@ -90,7 +90,7 @@ router.get(
       res.status(200).json({
         status: 'success',
         data: {
-          profileName: profile?.name ?? 'Shared records',
+          profileName: owner?.name ?? 'Shared records',
           expiresAt: share.expiresAt.toISOString(),
           documents,
         },

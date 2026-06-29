@@ -22,13 +22,13 @@ export function statusMeta(status: BiomarkerStatus): {
 } {
   switch (status) {
     case 'in':
-      return { color: '#15803d', tint: '#f0fdf4', label: 'In range' };
+      return { color: '#1A3D2B', tint: '#E4F0EA', label: 'In range' };
     case 'high':
-      return { color: '#b45309', tint: '#fffbeb', label: 'Above range' };
+      return { color: '#C47E1A', tint: '#FEF3CD', label: 'Above range' };
     case 'low':
-      return { color: '#b45309', tint: '#fffbeb', label: 'Below range' };
+      return { color: '#C47E1A', tint: '#FEF3CD', label: 'Below range' };
     default:
-      return { color: '#64748b', tint: '#f1f5f9', label: 'No reference range' };
+      return { color: '#5C6D63', tint: '#F0F7F3', label: 'No reference range' };
   }
 }
 

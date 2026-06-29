@@ -40,7 +40,7 @@
     {
       "idx": 5,
       "version": "7",
-      "when": 1749470000000,
+      "when": 1780970000000,
       "tag": "0005_chat_history",
       "breakpoints": true
     },
@@ -49,6 +49,13 @@
       "version": "7",
       "when": 1780999561421,
       "tag": "0006_neat_loki",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782712166831,
+      "tag": "0007_remove_profiles",
       "breakpoints": true
     }
   ]

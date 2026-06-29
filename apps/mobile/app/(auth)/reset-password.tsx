@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSignIn } from '@clerk/clerk-expo';
-import { Ionicons } from '@expo/vector-icons';
+import { Lock } from 'lucide-react-native';
+import { shadows } from '../../src/theme/genki';
 
 const CODE_LENGTH = 6;
 
@@ -101,7 +102,7 @@ export default function ResetPasswordScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-slate-50"
+      className="flex-1 bg-genki-bg"
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
@@ -110,19 +111,19 @@ export default function ResetPasswordScreen() {
       >
         <View className="flex-1 justify-center px-6 py-12">
           <View className="items-center mb-10">
-            <View className="w-16 h-16 rounded-2xl bg-slate-200 items-center justify-center mb-4">
-              <Ionicons name="lock-closed-outline" size={30} color="#334155" />
+            <View className="w-16 h-16 rounded-2xl bg-genki-gt items-center justify-center mb-4">
+              <Lock size={30} color="#1A3D2B" />
             </View>
-            <Text className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <Text className="text-3xl font-extrabold text-genki-text tracking-tight">
               Reset password
             </Text>
-            <Text className="text-sm text-slate-500 mt-2 text-center px-4">
+            <Text className="text-sm text-genki-muted mt-2 text-center px-4">
               Enter the 6-digit code from your email and set a new password.
             </Text>
           </View>
 
-          <View className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-            <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+          <View className="bg-white rounded-rl p-6" style={shadows.shS}>
+            <Text className="text-xs font-semibold text-genki-muted uppercase tracking-wider mb-3">
               Reset code
             </Text>
             <View className="flex-row justify-between mb-6">
@@ -145,39 +146,39 @@ export default function ResetPasswordScreen() {
                     height: 52,
                     borderRadius: 10,
                     borderWidth: 1.5,
-                    borderColor: digits[index] ? '#10b981' : '#e2e8f0',
-                    backgroundColor: digits[index] ? '#f0fdf4' : '#f8fafc',
+                    borderColor: digits[index] ? '#2E7D52' : 'rgba(13,31,20,0.07)',
+                    backgroundColor: digits[index] ? '#E4F0EA' : '#F1F5F2',
                     textAlign: 'center',
                     fontSize: 20,
                     fontWeight: '700',
-                    color: '#0f172a',
+                    color: '#0D1F14',
                   }}
                 />
               ))}
             </View>
 
             <View className="mb-4">
-              <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+              <Text className="text-xs font-semibold text-genki-muted uppercase tracking-wider mb-1.5">
                 New password
               </Text>
-              <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-4">
+              <View className="flex-row items-center bg-genki-bg border border-genki-border rounded-rs px-4">
                 <TextInput
                   value={newPassword}
                   onChangeText={setNewPassword}
                   placeholder="Min. 8 characters"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor="#8FA495"
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   autoCorrect={false}
                   returnKeyType="next"
-                  className="flex-1 py-3.5 text-base text-slate-900"
+                  className="flex-1 py-3.5 text-base text-genki-text"
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(v => !v)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  <Text className="text-slate-400 text-sm font-medium">
+                  <Text className="text-genki-faint text-sm font-medium">
                     {showPassword ? 'Hide' : 'Show'}
                   </Text>
                 </TouchableOpacity>
@@ -185,28 +186,28 @@ export default function ResetPasswordScreen() {
             </View>
 
             <View className="mb-6">
-              <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+              <Text className="text-xs font-semibold text-genki-muted uppercase tracking-wider mb-1.5">
                 Confirm new password
               </Text>
-              <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-4">
+              <View className="flex-row items-center bg-genki-bg border border-genki-border rounded-rs px-4">
                 <TextInput
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   placeholder="Repeat new password"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor="#8FA495"
                   secureTextEntry={!showConfirm}
                   autoCapitalize="none"
                   autoCorrect={false}
                   returnKeyType="done"
                   onSubmitEditing={handleReset}
-                  className="flex-1 py-3.5 text-base text-slate-900"
+                  className="flex-1 py-3.5 text-base text-genki-text"
                 />
                 <TouchableOpacity
                   onPress={() => setShowConfirm(v => !v)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   accessibilityLabel={showConfirm ? 'Hide confirm password' : 'Show confirm password'}
                 >
-                  <Text className="text-slate-400 text-sm font-medium">
+                  <Text className="text-genki-faint text-sm font-medium">
                     {showConfirm ? 'Hide' : 'Show'}
                   </Text>
                 </TouchableOpacity>
@@ -214,8 +215,8 @@ export default function ResetPasswordScreen() {
             </View>
 
             {error ? (
-              <View className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
-                <Text className="text-red-600 text-sm font-medium">{error}</Text>
+              <View className="bg-[#FDECEA] rounded-rm px-4 py-3 mb-4">
+                <Text className="text-[#C0392B] text-sm font-medium">{error}</Text>
               </View>
             ) : null}
 
@@ -223,7 +224,7 @@ export default function ResetPasswordScreen() {
               onPress={handleReset}
               disabled={isSubmitting}
               activeOpacity={0.85}
-              className="bg-emerald-600 py-3.5 rounded-xl items-center justify-center"
+              className="bg-genki-g8 py-3.5 rounded-rm items-center justify-center"
               accessibilityLabel="Set new password"
               accessibilityRole="button"
             >

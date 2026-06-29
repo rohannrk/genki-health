@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { and, eq, asc } from 'drizzle-orm';
 import { db, BiomarkerReadingRow } from '../db';
 import { biomarkerReadings } from '../db/schema/biomarkers';
-import { patientProfiles } from '../db/schema/profiles';
 import { requireAuth } from '../middleware/auth';
 import { getOrCreateUser } from '../middleware/getOrCreateUser';
 import { validate } from '../middleware/validate';
@@ -18,7 +17,6 @@ router.use(getOrCreateUser);
 
 const listSchema = {
   query: z.object({
-    profileId: z.string().uuid('profileId is required'),
     /** Optional: filter to a single document's readings (for the review card). */
     documentId: z.string().uuid().optional(),
   }),
@@ -26,7 +24,6 @@ const listSchema = {
 
 const detailSchema = {
   params: z.object({ code: z.string().min(1).max(64) }),
-  query: z.object({ profileId: z.string().uuid('profileId is required') }),
 };
 
 const updateSchema = {
@@ -37,13 +34,6 @@ const updateSchema = {
     refHigh: z.number().nullable(),
   }),
 };
-
-async function ownsProfile(profileId: string, userId: string): Promise<boolean> {
-  const profile = await db.query.patientProfiles.findFirst({
-    where: and(eq(patientProfiles.id, profileId), eq(patientProfiles.ownerId, userId)),
-  });
-  return !!profile;
-}
 
 // Stable order for a biomarker's readings: by report date, then ingestion time
 // so same-day readings have a deterministic order (latest = most recent of both).
@@ -86,7 +76,7 @@ const summaryFromLatest = (rows: BiomarkerReadingRow[]) => {
 function serializeReading(r: BiomarkerReadingRow) {
   return {
     id: r.id,
-    profileId: r.profileId,
+    userId: r.userId,
     documentId: r.documentId,
     code: r.code,
     name: r.name,
@@ -112,18 +102,13 @@ router.get(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = req.dbUser!.id;
-      const { profileId, documentId } = req.query as { profileId: string; documentId?: string };
-
-      if (!(await ownsProfile(profileId, userId))) {
-        res.status(403).json({ status: 'error', message: 'Access denied: You do not own this patient profile' });
-        return;
-      }
+      const { documentId } = req.query as { documentId?: string };
 
       // ── Document-scoped: return all readings for that one document ────────────
       if (documentId) {
         const rows = await db.query.biomarkerReadings.findMany({
           where: and(
-            eq(biomarkerReadings.profileId, profileId),
+            eq(biomarkerReadings.userId, userId),
             eq(biomarkerReadings.documentId, documentId),
           ),
           orderBy: [asc(biomarkerReadings.name)],
@@ -135,9 +120,9 @@ router.get(
         return;
       }
 
-      // ── Profile-wide summary (Home list/grid) ────────────────────────────────
+      // ── User-wide summary (Home list/grid) ────────────────────────────────────
       const rows = await db.query.biomarkerReadings.findMany({
-        where: eq(biomarkerReadings.profileId, profileId),
+        where: eq(biomarkerReadings.userId, userId),
         orderBy: readingOrder,
       });
 
@@ -170,15 +155,9 @@ router.get(
     try {
       const userId = req.dbUser!.id;
       const { code } = req.params as { code: string };
-      const { profileId } = req.query as { profileId: string };
-
-      if (!(await ownsProfile(profileId, userId))) {
-        res.status(403).json({ status: 'error', message: 'Access denied: You do not own this patient profile' });
-        return;
-      }
 
       const rawRows = await db.query.biomarkerReadings.findMany({
-        where: and(eq(biomarkerReadings.profileId, profileId), eq(biomarkerReadings.code, code)),
+        where: and(eq(biomarkerReadings.userId, userId), eq(biomarkerReadings.code, code)),
         orderBy: readingOrder,
       });
 
@@ -229,16 +208,12 @@ router.patch(
         refHigh: number | null;
       };
 
-      // Load the reading and verify ownership through its profile.
+      // Load the reading and verify ownership directly via its userId.
       const existing = await db.query.biomarkerReadings.findFirst({
-        where: eq(biomarkerReadings.id, readingId),
+        where: and(eq(biomarkerReadings.id, readingId), eq(biomarkerReadings.userId, userId)),
       });
       if (!existing) {
         res.status(404).json({ status: 'error', message: 'Reading not found' });
-        return;
-      }
-      if (!(await ownsProfile(existing.profileId, userId))) {
-        res.status(403).json({ status: 'error', message: 'Access denied' });
         return;
       }
 

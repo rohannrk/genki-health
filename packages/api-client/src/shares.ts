@@ -6,7 +6,6 @@ type Envelope<T> = { status: string; data: T };
 const BASE = '/api/v1/shares';
 
 export type CreateShareInput = {
-  profileId: string;
   documentIds: string[];
   expiresInHours?: number;
 };

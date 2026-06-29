@@ -1,5 +1,5 @@
 import { pgTable, uuid, varchar, text, date, jsonb, timestamp, index, customType } from 'drizzle-orm/pg-core';
-import { patientProfiles } from './profiles';
+import { users } from './users';
 
 const vector = customType<{ data: number[]; driverData: string }>({
   dataType() {
@@ -15,9 +15,9 @@ const vector = customType<{ data: number[]; driverData: string }>({
 
 export const medicalDocuments = pgTable('medical_documents', {
   id: uuid('id').primaryKey().defaultRandom(),
-  profileId: uuid('profile_id')
+  userId: uuid('user_id')
     .notNull()
-    .references(() => patientProfiles.id, { onDelete: 'cascade' }),
+    .references(() => users.id, { onDelete: 'cascade' }),
   type: varchar('type', { length: 50 }).notNull().default('other'),
   status: varchar('status', { length: 50 }).notNull().default('uploading'),
   // User-assigned display name (rename). Null → fall back to type/filename.
@@ -31,7 +31,7 @@ export const medicalDocuments = pgTable('medical_documents', {
   metadata: jsonb('metadata').notNull().default({}),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => ({
-  profileIdIdx: index('docs_profile_id_idx').on(table.profileId),
+  userIdIdx: index('docs_user_id_idx').on(table.userId),
   statusIdx: index('docs_status_idx').on(table.status),
   createdAtIdx: index('docs_created_at_idx').on(table.createdAt.desc()),
 }));

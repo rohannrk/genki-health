@@ -9,16 +9,15 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
-import { Ionicons } from '@expo/vector-icons';
+import { Search, FlaskConical } from 'lucide-react-native';
 import { ai as aiApi, SearchResult } from '@genki/api-client';
-import { useProfile } from '../../../src/context/ProfileContext';
 import { formatDate } from '@genki/utils';
-import { DOC_TYPE_ICON_NAMES } from '../../../src/lib/docTypeUtils';
+import { docTypeIcon } from '../../../src/lib/docTypeUtils';
+import { colors, shadows, tagColor } from '../../../src/theme/genki';
 
 export default function SearchTab() {
   const router = useRouter();
   const { getToken } = useAuth();
-  const { activeProfile } = useProfile();
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -27,7 +26,7 @@ export default function SearchTab() {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const runSearch = useCallback(async (q: string) => {
-    if (!activeProfile || q.trim().length < 2) {
+    if (q.trim().length < 2) {
       setResults([]);
       setSearched(false);
       return;
@@ -36,7 +35,7 @@ export default function SearchTab() {
     try {
       const token = await getToken();
       if (!token) return;
-      const data = await aiApi.search(activeProfile.id, q.trim(), token);
+      const data = await aiApi.search(q.trim(), token);
       setResults(data);
       setSearched(true);
     } catch (err) {
@@ -44,7 +43,7 @@ export default function SearchTab() {
     } finally {
       setLoading(false);
     }
-  }, [activeProfile, getToken]);
+  }, [getToken]);
 
   const onChangeQuery = (text: string) => {
     setQuery(text);
@@ -53,32 +52,32 @@ export default function SearchTab() {
   };
 
   return (
-    <View className="flex-1 bg-slate-50">
-      <View className="bg-white border-b border-slate-200 px-4 pt-14 pb-4">
-        <Text className="text-xl font-bold text-slate-900 mb-3">Search Records</Text>
-        <View className="flex-row items-center bg-slate-100 rounded-2xl px-4 py-2.5">
-          <Ionicons name="search-outline" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
+    <View className="flex-1 bg-genki-bg">
+      <View className="bg-white px-4 pt-14 pb-4" style={shadows.shS}>
+        <Text className="text-xl font-bold text-genki-text mb-3">Search Records</Text>
+        <View className="flex-row items-center bg-genki-bg rounded-rm px-4 py-2.5">
+          <Search size={16} color={colors.faint} style={{ marginRight: 8 }} />
           <TextInput
             value={query}
             onChangeText={onChangeQuery}
             placeholder="Search diagnoses, medications, hospitals…"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colors.faint}
             autoCapitalize="none"
             autoCorrect={false}
-            className="flex-1 text-slate-800 text-sm"
+            className="flex-1 text-genki-text text-sm"
           />
-          {loading && <ActivityIndicator size="small" color="#059669" />}
+          {loading && <ActivityIndicator size="small" color={colors.g8} />}
         </View>
       </View>
 
       <ScrollView className="flex-1 p-4">
         {!searched && !loading && (
           <View className="items-center py-12">
-            <Ionicons name="flask-outline" size={48} color="#cbd5e1" style={{ marginBottom: 12 }} />
-            <Text className="text-slate-500 text-sm text-center font-medium">
+            <FlaskConical size={48} color={colors.g3} style={{ marginBottom: 12 }} />
+            <Text className="text-genki-muted text-sm text-center font-medium">
               Search across all patient records using natural language.
             </Text>
-            <Text className="text-slate-400 text-xs text-center mt-1">
+            <Text className="text-genki-faint text-xs text-center mt-1">
               Try: "blood sugar levels", "amoxicillin", "Dr. Sharma"
             </Text>
           </View>
@@ -86,49 +85,54 @@ export default function SearchTab() {
 
         {searched && results.length === 0 && !loading && (
           <View className="items-center py-12">
-            <Ionicons name="search-outline" size={48} color="#cbd5e1" style={{ marginBottom: 12 }} />
-            <Text className="text-slate-500 text-sm text-center">No matching records found.</Text>
+            <Search size={48} color={colors.g3} style={{ marginBottom: 12 }} />
+            <Text className="text-genki-muted text-sm text-center">No matching records found.</Text>
           </View>
         )}
 
-        {results.map(r => (
-          <TouchableOpacity
-            key={r.documentId}
-            onPress={() => router.push(`/(app)/document/${r.documentId}` as any)}
-            className="bg-white rounded-2xl border border-slate-200 p-4 mb-3"
-            activeOpacity={0.75}
-          >
-            <View className="flex-row items-center justify-between mb-2">
-              <View className="flex-row items-center">
-                <Ionicons
-                  name={DOC_TYPE_ICON_NAMES[r.type] ?? 'document-text-outline'}
-                  size={16}
-                  color="#475569"
-                  style={{ marginRight: 8 }}
-                />
-                <Text className="text-sm font-bold text-slate-800 capitalize">{r.type}</Text>
-              </View>
-              <View className="flex-row items-center">
-                {r.date && (
-                  <Text className="text-xs text-slate-400 mr-2">{formatDate(r.date)}</Text>
-                )}
-                <View className="bg-emerald-100 px-2 py-0.5 rounded-full">
-                  <Text className="text-xs font-bold text-emerald-700">
-                    {Math.round((r.score ?? 0) * 100)}%
-                  </Text>
+        {results.map(r => {
+          const tag = tagColor(r.type);
+          const Icon = docTypeIcon(r.type);
+          return (
+            <TouchableOpacity
+              key={r.documentId}
+              onPress={() => router.push(`/(app)/document/${r.documentId}` as any)}
+              className="bg-white rounded-rm p-4 mb-3"
+              style={shadows.shS}
+              activeOpacity={0.85}
+            >
+              <View className="flex-row items-center justify-between mb-2">
+                <View className="flex-row items-center">
+                  <View
+                    className="w-7 h-7 items-center justify-center mr-2"
+                    style={{ backgroundColor: tag.bg, borderRadius: 9 }}
+                  >
+                    <Icon size={14} color={tag.fg} />
+                  </View>
+                  <Text className="text-sm font-semibold text-genki-text capitalize">{r.type}</Text>
+                </View>
+                <View className="flex-row items-center">
+                  {r.date && (
+                    <Text className="text-xs text-genki-faint mr-2">{formatDate(r.date)}</Text>
+                  )}
+                  <View className="bg-genki-gt px-2 py-0.5 rounded-full">
+                    <Text className="text-xs font-bold text-genki-g8">
+                      {Math.round((r.score ?? 0) * 100)}%
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
-            {r.hospitalName && (
-              <Text className="text-xs text-slate-500 mb-1">{r.hospitalName}</Text>
-            )}
-            {r.excerpt && (
-              <Text className="text-xs text-slate-600 leading-relaxed" numberOfLines={3}>
-                {r.excerpt}
-              </Text>
-            )}
-          </TouchableOpacity>
-        ))}
+              {r.hospitalName && (
+                <Text className="text-xs text-genki-muted mb-1">{r.hospitalName}</Text>
+              )}
+              {r.excerpt && (
+                <Text className="text-xs text-genki-muted leading-relaxed" numberOfLines={3}>
+                  {r.excerpt}
+                </Text>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
     </View>
   );

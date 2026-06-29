@@ -115,7 +115,7 @@ export function classifyStatus(
  */
 export async function saveBiomarkerReadings(
   documentId: string,
-  profileId: string,
+  userId: string,
   measuredAt: string,
   raw: RawBiomarker[]
 ): Promise<number> {
@@ -145,7 +145,7 @@ export async function saveBiomarkerReadings(
       const canon = canonicalizeUnit(code, value, rawUnit, low, high);
 
       return {
-        profileId,
+        userId,
         documentId,
         code,
         name: displayName,

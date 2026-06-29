@@ -12,7 +12,7 @@ import {
 import { useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSignUp } from '@clerk/clerk-expo';
-import { Ionicons } from '@expo/vector-icons';
+import { ArrowLeft, Mail } from 'lucide-react-native';
 import { useAuthContext } from '../../src/context/AuthContext';
 
 const CODE_LENGTH = 6;
@@ -50,10 +50,8 @@ export default function VerifyEmailScreen() {
   }, [digits]);
 
   const handleDigitChange = (value: string, index: number) => {
-    // Accept only numeric digits; handle paste by spreading across cells
     const sanitized = value.replace(/[^0-9]/g, '');
     if (sanitized.length > 1) {
-      // Handle paste
       const pasted = sanitized.slice(0, CODE_LENGTH).split('');
       const newDigits = [...digits];
       pasted.forEach((char, i) => {
@@ -94,7 +92,6 @@ export default function VerifyEmailScreen() {
         const result = await signUp.attemptEmailAddressVerification({ code });
         await setActive({ session: result.createdSessionId });
         await syncUser();
-        // New users create a family member first; AI keys are set per-profile afterwards.
         router.replace('/(app)/create-profile' as Href);
       } catch (err: any) {
         const msg =
@@ -139,7 +136,7 @@ export default function VerifyEmailScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-slate-50"
+      className="flex-1 bg-genki-bg"
     >
       <TouchableOpacity
         onPress={handleBack}
@@ -147,9 +144,9 @@ export default function VerifyEmailScreen() {
         accessibilityLabel="Go back"
         accessibilityRole="button"
         style={{ position: 'absolute', top: insets.top + 8, left: 16, zIndex: 10 }}
-        className="w-10 h-10 rounded-full bg-white border border-slate-200 items-center justify-center"
+        className="w-10 h-10 rounded-full bg-white border border-genki-border items-center justify-center"
       >
-        <Ionicons name="arrow-back" size={20} color="#334155" />
+        <ArrowLeft size={20} color="#1A3D2B" />
       </TouchableOpacity>
 
       <ScrollView
@@ -159,15 +156,15 @@ export default function VerifyEmailScreen() {
       >
         <View className="flex-1 justify-center px-6 py-12">
           <View className="items-center mb-10">
-            <View className="w-16 h-16 rounded-2xl bg-emerald-600 items-center justify-center mb-4 shadow-lg">
-              <Ionicons name="mail-outline" size={30} color="#ffffff" />
+            <View className="w-16 h-16 rounded-2xl bg-genki-g8 items-center justify-center mb-4">
+              <Mail size={30} color="#ffffff" />
             </View>
-            <Text className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <Text className="text-3xl font-extrabold text-genki-text tracking-tight">
               Check your email
             </Text>
-            <Text className="text-sm text-slate-500 mt-2 text-center px-4">
+            <Text className="text-sm text-genki-muted mt-2 text-center px-4">
               We sent a 6-digit code to{'\n'}
-              <Text className="font-semibold text-slate-700">{email}</Text>
+              <Text className="font-semibold text-genki-text">{email}</Text>
             </Text>
           </View>
 
@@ -182,7 +179,7 @@ export default function VerifyEmailScreen() {
                 onChangeText={value => handleDigitChange(value, index)}
                 onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, index)}
                 keyboardType="number-pad"
-                maxLength={CODE_LENGTH} // allow paste
+                maxLength={CODE_LENGTH}
                 selectTextOnFocus
                 editable={!isSubmitting}
                 accessibilityLabel={`Digit ${index + 1} of ${CODE_LENGTH}`}
@@ -191,42 +188,42 @@ export default function VerifyEmailScreen() {
                   height: 56,
                   borderRadius: 12,
                   borderWidth: 1.5,
-                  borderColor: digits[index] ? '#10b981' : '#e2e8f0',
-                  backgroundColor: digits[index] ? '#f0fdf4' : '#f8fafc',
+                  borderColor: digits[index] ? '#2E7D52' : 'rgba(13,31,20,0.07)',
+                  backgroundColor: digits[index] ? '#E4F0EA' : '#F1F5F2',
                   textAlign: 'center',
                   fontSize: 22,
                   fontWeight: '700',
-                  color: '#0f172a',
+                  color: '#0D1F14',
                 }}
               />
             ))}
           </View>
 
           {error ? (
-            <View className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4 mx-0">
-              <Text className="text-red-600 text-sm font-medium text-center">{error}</Text>
+            <View className="bg-[#FDECEA] rounded-rm px-4 py-3 mb-4 mx-0">
+              <Text className="text-[#C0392B] text-sm font-medium text-center">{error}</Text>
             </View>
           ) : null}
 
           {isSubmitting && (
             <View className="items-center mb-4">
-              <ActivityIndicator color="#10b981" />
-              <Text className="text-slate-500 text-sm mt-2">Verifying…</Text>
+              <ActivityIndicator color="#2E7D52" />
+              <Text className="text-genki-muted text-sm mt-2">Verifying…</Text>
             </View>
           )}
 
           <View className="items-center mt-2">
             {cooldown > 0 ? (
-              <Text className="text-slate-400 text-sm">
+              <Text className="text-genki-faint text-sm">
                 Resend code in{' '}
-                <Text className="font-semibold text-slate-600">{cooldown}s</Text>
+                <Text className="font-semibold text-genki-muted">{cooldown}s</Text>
               </Text>
             ) : (
               <TouchableOpacity
                 onPress={handleResend}
                 accessibilityLabel="Resend verification code"
               >
-                <Text className="text-emerald-600 font-semibold text-sm">Resend code</Text>
+                <Text className="text-genki-g5 font-semibold text-sm">Resend code</Text>
               </TouchableOpacity>
             )}
           </View>

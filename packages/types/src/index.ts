@@ -1,36 +1,22 @@
+/**
+ * The signed-in user, who is their own single patient. `name`/`dob` are the
+ * one-time "about you" details captured at setup.
+ */
 export type User = {
   id: string;
-  phone: string;
-  email?: string;
+  email?: string | null;
+  name: string | null;
+  dob: string | null;
   aiProvider: 'openai' | 'anthropic' | 'gemini' | null;
+  /** Whether the user has an AI (BYOK) key configured. */
   hasApiKey: boolean;
-  createdAt: string;
+  aiOptIn?: boolean;
 };
 
-export type Relation = 'self' | 'spouse' | 'parent' | 'child' | 'other';
-
-export type PatientProfile = {
-  id: string;
-  ownerId: string;
-  name: string;
-  dob: string;
-  relation: string;
-  /** R2/S3 object key for the avatar (backend storage field). */
-  avatarKey?: string | null;
-  /** Optional fully-qualified URL (legacy / future presigned display URL). */
-  avatarUrl?: string;
-  /** Whether this profile has its own AI (BYOK) key configured. */
-  hasApiKey?: boolean;
-  /** The AI provider for this profile's key, if set. */
-  aiProvider?: 'openai' | 'anthropic' | 'gemini' | null;
-  createdAt?: string;
-};
-
-export type CreateProfileInput = {
-  name: string;
-  dob: string;
-  relation: Relation;
-  avatarKey?: string;
+/** Payload for the one-time "about you" setup (and later edits). */
+export type UpdateMeInput = {
+  name?: string;
+  dob?: string;
 };
 
 export type DocumentType = 'prescription' | 'lab' | 'invoice' | 'imaging' | 'other';
@@ -38,7 +24,7 @@ export type DocumentStatus = 'uploading' | 'processing' | 'ready' | 'error';
 
 export type MedicalDocument = {
   id: string;
-  profileId: string;
+  userId: string;
   type: DocumentType;
   status: DocumentStatus;
   /** User-assigned display name (rename). Null/absent → fall back to type/filename. */
@@ -69,7 +55,6 @@ export type ConsentSettings = {
 
 export type Share = {
   id: string;
-  profileId: string;
   documentIds: string[];
   token: string;
   /** Fully-qualified redemption URL (`/api/v1/share/:token`). */
@@ -102,7 +87,7 @@ export type BiomarkerStatus = 'low' | 'in' | 'high' | 'unknown';
 /** A single biomarker measurement extracted from one lab report. */
 export type BiomarkerReading = {
   id: string;
-  profileId: string;
+  userId: string;
   documentId: string;
   /** Normalized identifier, e.g. 'hemoglobin'. */
   code: string;

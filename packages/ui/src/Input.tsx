@@ -25,13 +25,13 @@ export function Input({
         onChangeText={onChangeText}
         placeholder={placeholder}
         secureTextEntry={secureTextEntry}
-        placeholderTextColor="#94a3b8"
+        placeholderTextColor="#8FA495"
         autoCapitalize="none"
-        className={`w-full bg-white border rounded-xl px-4 py-3 text-slate-800 ${
-          error ? 'border-rose-500' : 'border-slate-200 focus:border-slate-400'
+        className={`w-full bg-genki-bg border rounded-rs px-4 py-3 text-genki-text ${
+          error ? 'border-[#C0392B]' : 'border-transparent focus:border-genki-g8'
         }`}
       />
-      {error && <Text className="text-xs text-rose-500 mt-1 ml-1 font-semibold">{error}</Text>}
+      {error && <Text className="text-xs text-[#C0392B] mt-1 ml-1 font-semibold">{error}</Text>}
     </View>
   );
 }

@@ -9,11 +9,12 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
-import { Ionicons } from '@expo/vector-icons';
+import { Cpu, Lightbulb, Zap, Eye, EyeOff, LucideIcon } from 'lucide-react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { useProfile } from '../../src/context/ProfileContext';
+import { colors, shadows } from '../../src/theme/genki';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://api.genki.in';
 
@@ -23,7 +24,7 @@ type Provider = {
   id: ProviderId;
   name: string;
   model: string;
-  iconName: keyof typeof Ionicons.glyphMap;
+  icon: LucideIcon;
   placeholder: string;
   keyUrl: string;
 };
@@ -33,7 +34,7 @@ const PROVIDERS: Provider[] = [
     id: 'openai',
     name: 'OpenAI',
     model: 'GPT-4o',
-    iconName: 'hardware-chip-outline',
+    icon: Cpu,
     placeholder: 'sk-proj-...',
     keyUrl: 'https://platform.openai.com/api-keys',
   },
@@ -41,7 +42,7 @@ const PROVIDERS: Provider[] = [
     id: 'anthropic',
     name: 'Anthropic',
     model: 'Claude Sonnet',
-    iconName: 'bulb-outline',
+    icon: Lightbulb,
     placeholder: 'sk-ant-...',
     keyUrl: 'https://console.anthropic.com/keys',
   },
@@ -49,7 +50,7 @@ const PROVIDERS: Provider[] = [
     id: 'gemini',
     name: 'Gemini',
     model: 'Gemini 3.5 Flash',
-    iconName: 'flash-outline',
+    icon: Zap,
     placeholder: 'AIza...',
     keyUrl: 'https://aistudio.google.com/apikey',
   },
@@ -58,10 +59,7 @@ const PROVIDERS: Provider[] = [
 export default function ByokScreen() {
   const router = useRouter();
   const { getToken } = useAuth();
-  const { profiles, activeProfile, refreshProfiles } = useProfile();
-  const params = useLocalSearchParams<{ profileId?: string }>();
-  const targetProfile =
-    profiles.find(p => p.id === params.profileId) ?? activeProfile ?? null;
+  const { refreshMe } = useProfile();
 
   const [selectedId, setSelectedId] = useState<ProviderId>('gemini');
   const [apiKey, setApiKey] = useState('');
@@ -106,11 +104,6 @@ export default function ByokScreen() {
         return;
       }
 
-      if (!targetProfile) {
-        setError('No family member selected. Open this from a profile in Settings.');
-        return;
-      }
-
       const headers = {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
@@ -130,7 +123,7 @@ export default function ByokScreen() {
       const saveRes = await fetch(`${API_BASE}/api/v1/keys/save`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ profileId: targetProfile.id, provider: selectedId, apiKey: trimmedKey }),
+        body: JSON.stringify({ provider: selectedId, apiKey: trimmedKey }),
       });
       if (!saveRes.ok) {
         const data = await saveRes.json().catch(() => ({}));
@@ -140,7 +133,7 @@ export default function ByokScreen() {
 
       setSavedLast4(trimmedKey.slice(-4));
       setApiKey('');
-      await refreshProfiles();
+      await refreshMe();
       router.back();
     } catch {
       setError('Something went wrong. Please check your connection and try again.');
@@ -157,7 +150,7 @@ export default function ByokScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-slate-50"
+      className="flex-1 bg-genki-bg"
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
@@ -166,19 +159,18 @@ export default function ByokScreen() {
       >
         <View className="flex-1 justify-center px-6 py-12">
           <View className="mb-8">
-            <Text className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <Text className="text-3xl font-extrabold text-genki-text tracking-tight">
               Connect AI
             </Text>
-            <Text className="text-sm text-slate-500 mt-2 leading-5">
-              {targetProfile
-                ? `Set the AI key for ${targetProfile.name}. Their records are processed using this key — we never see your data.`
-                : 'Open this from a family member in Settings to set their AI key.'}
+            <Text className="text-sm text-genki-muted mt-2 leading-5">
+              Add your own AI key. Your records are processed using this key — we never see your data.
             </Text>
           </View>
 
           <View className="flex-row gap-x-3 mb-6">
             {PROVIDERS.map(p => {
               const selected = p.id === selectedId;
+              const ProviderIcon = p.icon;
               return (
                 <TouchableOpacity
                   key={p.id}
@@ -188,28 +180,28 @@ export default function ByokScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={`${p.name}, ${p.model}`}
                   accessibilityState={{ selected }}
-                  className={`flex-1 rounded-2xl border p-3 items-center ${
+                  className={`flex-1 rounded-rl border p-3 items-center ${
                     selected
-                      ? 'border-teal-500 bg-teal-50'
-                      : 'border-slate-200 bg-white'
+                      ? 'border-genki-g8 bg-genki-gt'
+                      : 'border-genki-border bg-white'
                   }`}
+                  style={selected ? undefined : shadows.shS}
                 >
-                  <Ionicons
-                    name={p.iconName}
+                  <ProviderIcon
                     size={26}
-                    color={selected ? '#0d9488' : '#334155'}
+                    color={selected ? colors.g8 : colors.muted}
                     style={{ marginBottom: 6 }}
                   />
                   <Text
                     className={`text-sm font-bold ${
-                      selected ? 'text-teal-700' : 'text-slate-900'
+                      selected ? 'text-genki-g8' : 'text-genki-text'
                     }`}
                   >
                     {p.name}
                   </Text>
                   <Text
                     className={`text-xs mt-0.5 text-center ${
-                      selected ? 'text-teal-600' : 'text-slate-500'
+                      selected ? 'text-genki-g5' : 'text-genki-muted'
                     }`}
                   >
                     {p.model}
@@ -220,15 +212,15 @@ export default function ByokScreen() {
           </View>
 
           <View className="mb-2">
-            <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+            <Text className="text-xs font-semibold text-genki-muted uppercase tracking-wider mb-1.5">
               {provider.name} API key
             </Text>
-            <View className="flex-row items-center bg-white border border-slate-200 rounded-xl px-4">
+            <View className="flex-row items-center bg-white border border-genki-border rounded-rs px-4" style={shadows.shS}>
               <TextInput
                 value={isSaved ? `••••••••${savedLast4}` : apiKey}
                 onChangeText={setApiKey}
                 placeholder={provider.placeholder}
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor="#8FA495"
                 secureTextEntry={!showKey && !isSaved}
                 editable={!isSaved && !isSaving}
                 autoCapitalize="none"
@@ -236,7 +228,7 @@ export default function ByokScreen() {
                 autoComplete="off"
                 returnKeyType="done"
                 onSubmitEditing={handleValidateAndSave}
-                className="flex-1 py-3.5 text-base text-slate-900"
+                className="flex-1 py-3.5 text-base text-genki-text"
               />
               {!isSaved && (
                 <TouchableOpacity
@@ -244,11 +236,10 @@ export default function ByokScreen() {
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   accessibilityLabel={showKey ? 'Hide API key' : 'Show API key'}
                 >
-                  <Ionicons
-                    name={showKey ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
-                    color="#94a3b8"
-                  />
+                  {showKey
+                    ? <EyeOff size={20} color={colors.faint} />
+                    : <Eye size={20} color={colors.faint} />
+                  }
                 </TouchableOpacity>
               )}
             </View>
@@ -261,12 +252,12 @@ export default function ByokScreen() {
             accessibilityLabel="Where do I get my key?"
             className="self-start mb-4"
           >
-            <Text className="text-teal-600 text-sm font-medium">Where do I get my key?</Text>
+            <Text className="text-genki-g5 text-sm font-medium">Where do I get my key?</Text>
           </TouchableOpacity>
 
           {error ? (
-            <View className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
-              <Text className="text-red-600 text-sm font-medium">{error}</Text>
+            <View className="bg-[#FDECEA] rounded-rm px-4 py-3 mb-4">
+              <Text className="text-[#C0392B] text-sm font-medium">{error}</Text>
             </View>
           ) : null}
 
@@ -276,9 +267,10 @@ export default function ByokScreen() {
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityLabel="Validate and save API key"
-            className={`py-3.5 rounded-xl items-center justify-center ${
-              isSaving || isSaved ? 'bg-teal-400' : 'bg-teal-600'
+            className={`py-3.5 rounded-rm items-center justify-center ${
+              isSaving || isSaved ? 'bg-genki-g5' : 'bg-genki-g8'
             }`}
+            style={isSaving || isSaved ? undefined : shadows.greenBtn}
           >
             {isSaving ? (
               <ActivityIndicator color="#ffffff" />
@@ -295,7 +287,7 @@ export default function ByokScreen() {
             accessibilityLabel="Cancel"
             className="items-center mt-4"
           >
-            <Text className="text-slate-500 text-sm font-medium">Cancel</Text>
+            <Text className="text-genki-muted text-sm font-medium">Cancel</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

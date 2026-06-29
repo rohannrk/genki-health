@@ -3,11 +3,11 @@ import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
-import { Ionicons } from '@expo/vector-icons';
+import { FlaskConical, ChevronLeft } from 'lucide-react-native';
 import { biomarkers as biomarkersApi } from '@genki/api-client';
 import { BiomarkerDetail as BiomarkerDetailData } from '@genki/types';
-import { useProfile } from '../../../src/context/ProfileContext';
 import BiomarkerDetail from '../../../src/features/biomarker/BiomarkerDetail';
+import { colors } from '../../../src/theme/genki';
 
 export default function BiomarkerDetailScreen() {
   // `id` is the biomarker code (e.g. 'hemoglobin').
@@ -16,7 +16,6 @@ export default function BiomarkerDetailScreen() {
   const { getToken } = useAuth();
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
-  const { activeProfile } = useProfile();
 
   const [data, setData] = useState<BiomarkerDetailData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,7 +24,7 @@ export default function BiomarkerDetailScreen() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!id || !activeProfile) {
+      if (!id) {
         setLoading(false);
         return;
       }
@@ -37,7 +36,7 @@ export default function BiomarkerDetailScreen() {
           setError('You need to be signed in.');
           return;
         }
-        const detail = await biomarkersApi.get(id, activeProfile.id, token);
+        const detail = await biomarkersApi.get(id, token);
         if (!cancelled) setData(detail);
       } catch (e) {
         if (!cancelled) setError('No data found for this biomarker yet.');
@@ -48,7 +47,7 @@ export default function BiomarkerDetailScreen() {
     return () => {
       cancelled = true;
     };
-  }, [id, activeProfile?.id]);
+  }, [id]);
 
   const goBack = () =>
     router.canGoBack() ? router.back() : router.replace('/(app)/(tabs)');
@@ -56,7 +55,7 @@ export default function BiomarkerDetailScreen() {
   if (loading) {
     return (
       <Centered>
-        <ActivityIndicator size="large" color="#14532d" />
+        <ActivityIndicator size="large" color={colors.g8} />
       </Centered>
     );
   }
@@ -64,8 +63,8 @@ export default function BiomarkerDetailScreen() {
   if (error || !data) {
     return (
       <Centered onBack={goBack}>
-        <Ionicons name="flask-outline" size={44} color="#cbd5e1" style={{ marginBottom: 12 }} />
-        <Text className="text-slate-500 text-center text-sm">
+        <FlaskConical size={44} color={colors.g3} style={{ marginBottom: 12 }} />
+        <Text className="text-genki-muted text-center text-sm">
           {error ?? 'No data found for this biomarker yet.'}
         </Text>
       </Centered>
@@ -79,15 +78,15 @@ export default function BiomarkerDetailScreen() {
 function Centered({ children, onBack }: { children: React.ReactNode; onBack?: () => void }) {
   const insets = useSafeAreaInsets();
   return (
-    <View className="flex-1 bg-slate-50">
+    <View className="flex-1 bg-genki-bg">
       <View style={{ paddingTop: Math.max(insets.top, 12) }} className="px-4 py-2">
         {onBack && (
           <TouchableOpacity
             onPress={onBack}
-            className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center"
+            className="w-10 h-10 rounded-full bg-white items-center justify-center"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="chevron-back" size={18} color="#334155" />
+            <ChevronLeft size={18} color={colors.g8} />
           </TouchableOpacity>
         )}
       </View>

@@ -7,66 +7,34 @@ import React, {
   useRef,
   ReactNode,
 } from 'react';
-import * as SecureStore from 'expo-secure-store';
 import { useAuth } from '@clerk/clerk-expo';
-import { PatientProfile } from '@genki/types';
-import { profiles as profilesApi } from '@genki/api-client';
-
-const ACTIVE_PROFILE_KEY = 'activeProfileId';
+import { User } from '@genki/types';
+import { me as meApi } from '@genki/api-client';
 
 // ---------------------------------------------------------------------------
-// Reducer
+// The app is single-user: the signed-in account is its own patient ("me").
+// This context exposes that one record. `activeProfile` is kept as an alias of
+// `me` so existing screens that read `.name`/`.id`/`.hasApiKey` keep working.
 // ---------------------------------------------------------------------------
 
 type State = {
-  profiles: PatientProfile[];
-  activeProfile: PatientProfile | null;
+  me: User | null;
   isLoading: boolean;
 };
 
 type Action =
-  | { type: 'SET_PROFILES'; payload: PatientProfile[] }
-  | { type: 'ADD_PROFILE'; payload: PatientProfile }
-  | { type: 'SET_ACTIVE'; payload: PatientProfile | null }
-  | { type: 'UPDATE_PROFILE'; payload: PatientProfile }
+  | { type: 'SET_ME'; payload: User | null }
   | { type: 'SET_LOADING'; payload: boolean };
 
 const initialState: State = {
-  profiles: [],
-  activeProfile: null,
+  me: null,
   isLoading: true,
 };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'SET_PROFILES': {
-      const profiles = action.payload;
-      // Keep the active profile if it still exists, else default to the first.
-      const active =
-        (state.activeProfile &&
-          profiles.find(p => p.id === state.activeProfile!.id)) ||
-        profiles[0] ||
-        null;
-      return { ...state, profiles, activeProfile: active };
-    }
-    case 'ADD_PROFILE': {
-      const profiles = [...state.profiles, action.payload];
-      // First profile becomes active automatically.
-      const activeProfile = state.activeProfile ?? action.payload;
-      return { ...state, profiles, activeProfile };
-    }
-    case 'SET_ACTIVE':
-      return { ...state, activeProfile: action.payload };
-    case 'UPDATE_PROFILE': {
-      const profiles = state.profiles.map(p =>
-        p.id === action.payload.id ? action.payload : p
-      );
-      const activeProfile =
-        state.activeProfile?.id === action.payload.id
-          ? action.payload
-          : state.activeProfile;
-      return { ...state, profiles, activeProfile };
-    }
+    case 'SET_ME':
+      return { ...state, me: action.payload };
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
     default:
@@ -74,25 +42,27 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Context
-// ---------------------------------------------------------------------------
-
-type ProfileContextType = State & {
+type ProfileContextType = {
+  me: User | null;
+  /** Alias of `me` — the single patient. */
+  activeProfile: User | null;
+  /** Whether the one-time "about you" details (name) have been filled in. */
+  hasProfile: boolean;
+  isLoading: boolean;
+  refreshMe: () => Promise<void>;
+  /** Back-compat alias of refreshMe. */
   refreshProfiles: () => Promise<void>;
-  addProfile: (profile: PatientProfile) => void;
-  setActiveProfile: (profile: PatientProfile | null) => void;
-  updateProfile: (profile: PatientProfile) => void;
-  deleteProfile: (id: string) => Promise<void>;
+  setMe: (user: User) => void;
 };
 
 const ProfileContext = createContext<ProfileContextType>({
-  ...initialState,
+  me: null,
+  activeProfile: null,
+  hasProfile: false,
+  isLoading: true,
+  refreshMe: async () => {},
   refreshProfiles: async () => {},
-  addProfile: () => {},
-  setActiveProfile: () => {},
-  updateProfile: () => {},
-  deleteProfile: async () => {},
+  setMe: () => {},
 });
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
@@ -101,74 +71,46 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
 
-  const refreshProfiles = useCallback(async () => {
+  const refreshMe = useCallback(async () => {
     try {
       const token = await getTokenRef.current();
       if (!token) {
-        dispatch({ type: 'SET_PROFILES', payload: [] });
+        dispatch({ type: 'SET_ME', payload: null });
         return;
       }
-      const list = await profilesApi.list(token);
-      dispatch({ type: 'SET_PROFILES', payload: list });
-
-      const storedId = await SecureStore.getItemAsync(ACTIVE_PROFILE_KEY);
-      if (storedId) {
-        const stored = list.find(p => p.id === storedId);
-        if (stored) dispatch({ type: 'SET_ACTIVE', payload: stored });
-      }
+      const user = await meApi.get(token);
+      dispatch({ type: 'SET_ME', payload: user });
     } catch (error) {
-      console.warn('[ProfileContext] refreshProfiles failed:', error);
+      console.warn('[ProfileContext] refreshMe failed:', error);
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, []);
 
-  // Fetch profiles when sign-in state changes (stable deps — no loop).
   useEffect(() => {
     if (isSignedIn) {
       dispatch({ type: 'SET_LOADING', payload: true });
-      refreshProfiles();
+      refreshMe();
     } else {
-      dispatch({ type: 'SET_PROFILES', payload: [] });
+      dispatch({ type: 'SET_ME', payload: null });
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }, [isSignedIn, refreshProfiles]);
+  }, [isSignedIn, refreshMe]);
 
-  const addProfile = useCallback((profile: PatientProfile) => {
-    dispatch({ type: 'ADD_PROFILE', payload: profile });
+  const setMe = useCallback((user: User) => {
+    dispatch({ type: 'SET_ME', payload: user });
   }, []);
-
-  const setActiveProfile = useCallback((profile: PatientProfile | null) => {
-    dispatch({ type: 'SET_ACTIVE', payload: profile });
-    // Persist the selection across app restarts.
-    if (profile) {
-      SecureStore.setItemAsync(ACTIVE_PROFILE_KEY, profile.id).catch(() => {});
-    } else {
-      SecureStore.deleteItemAsync(ACTIVE_PROFILE_KEY).catch(() => {});
-    }
-  }, []);
-
-  const updateProfile = useCallback((profile: PatientProfile) => {
-    dispatch({ type: 'UPDATE_PROFILE', payload: profile });
-  }, []);
-
-  const deleteProfile = useCallback(async (id: string) => {
-    const token = await getTokenRef.current();
-    if (!token) throw new Error('Not authenticated');
-    await profilesApi.delete(id, token);
-    // Re-fetch; SET_PROFILES re-selects a valid active profile if the deleted one was active.
-    await refreshProfiles();
-  }, [refreshProfiles]);
 
   return (
     <ProfileContext.Provider
       value={{
-        ...state,
-        refreshProfiles,
-        addProfile,
-        setActiveProfile,
-        updateProfile,
-        deleteProfile,
+        me: state.me,
+        activeProfile: state.me,
+        hasProfile: !!state.me?.name,
+        isLoading: state.isLoading,
+        refreshMe,
+        refreshProfiles: refreshMe,
+        setMe,
       }}
     >
       {children}

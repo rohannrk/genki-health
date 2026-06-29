@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BookOpen, TrendingUp } from 'lucide-react-native';
 import { BiomarkerDetail as BiomarkerDetailData } from '@genki/types';
 import { biomarkerInfo } from './data';
 import DetailHeader from './components/DetailHeader';
@@ -38,8 +39,8 @@ export default function BiomarkerDetail({ biomarker, onBack, onShare }: Props) {
   const reportLabel = `${biomarker.count} ${biomarker.count === 1 ? 'reading' : 'readings'}`;
 
   return (
-    <View className="flex-1 bg-slate-50">
-      <View style={{ paddingTop: Math.max(insets.top, 12) }} className="bg-slate-50">
+    <View className="flex-1 bg-genki-bg">
+      <View style={{ paddingTop: Math.max(insets.top, 12) }} className="bg-genki-bg">
         <DetailHeader
           title={biomarker.name}
           subtitle={`${formatDate(biomarker.measuredAt)} · ${reportLabel}`}
@@ -69,10 +70,10 @@ export default function BiomarkerDetail({ biomarker, onBack, onShare }: Props) {
 
         {/* About */}
         <View className="mt-5">
-          <InfoCard label="About" icon="reader-outline">
-            <Text className="text-[16px] leading-[23px] text-slate-800">{info.about}</Text>
+          <InfoCard label="About" icon={BookOpen}>
+            <Text className="text-[16px] leading-[23px] text-genki-text">{info.about}</Text>
             {info.aboutSecondary ? (
-              <Text className="text-[14px] leading-[21px] text-slate-400 mt-2">
+              <Text className="text-[14px] leading-[21px] text-genki-muted mt-2">
                 {info.aboutSecondary}
               </Text>
             ) : null}
@@ -83,10 +84,10 @@ export default function BiomarkerDetail({ biomarker, onBack, onShare }: Props) {
         <View className="mt-4">
           <InfoCard
             label="Trend"
-            icon="trending-up-outline"
+            icon={TrendingUp}
             right={
               biomarker.history.length >= 2 ? (
-                <Text className="text-[12px] text-slate-400">{dateSpan(biomarker)}</Text>
+                <Text className="text-[12px] text-genki-faint">{dateSpan(biomarker)}</Text>
               ) : undefined
             }
           >
@@ -100,7 +101,7 @@ export default function BiomarkerDetail({ biomarker, onBack, onShare }: Props) {
               />
             ) : (
               <View className="items-center py-5">
-                <Text className="text-[13px] text-slate-400 text-center leading-5">
+                <Text className="text-[13px] text-genki-faint text-center leading-5">
                   Upload a second report to start tracking{'\n'}this value over time.
                 </Text>
               </View>

@@ -15,17 +15,9 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { profiles as profilesApi } from '@genki/api-client';
-import type { Relation } from '@genki/types';
+import { me as meApi } from '@genki/api-client';
 import { useProfile } from '../../src/context/ProfileContext';
-
-const RELATIONS: { label: string; value: Relation }[] = [
-  { label: 'Myself', value: 'self' },
-  { label: 'Spouse', value: 'spouse' },
-  { label: 'Parent', value: 'parent' },
-  { label: 'Child', value: 'child' },
-  { label: 'Other', value: 'other' },
-];
+import { colors, shadows } from '../../src/theme/genki';
 
 const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -53,17 +45,16 @@ function initialsFromName(name: string): string {
 export default function CreateProfileScreen() {
   const router = useRouter();
   const { getToken } = useAuth();
-  const { profiles, addProfile } = useProfile();
+  const { setMe, hasProfile } = useProfile();
 
   const [name, setName] = useState('');
-  const [relation, setRelation] = useState<Relation>('self');
   const [dob, setDob] = useState<Date | null>(null);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const canSkip = profiles.length > 0;
+  const canSkip = hasProfile;
 
   const handlePickAvatar = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -86,7 +77,6 @@ export default function CreateProfileScreen() {
   };
 
   const handleDateChange = (_event: unknown, selected?: Date) => {
-    // On Android the picker is a dialog and closes itself.
     if (Platform.OS !== 'ios') setShowPicker(false);
     if (selected) setDob(selected);
   };
@@ -111,16 +101,14 @@ export default function CreateProfileScreen() {
         return;
       }
 
-      // NOTE: avatar upload is not wired yet — there is no profile-avatar
-      // presigned-URL endpoint on the backend (the documents upload-url route
-      // requires an existing profileId). The picked image is shown locally;
-      // avatarKey is omitted until that endpoint exists.
-      const created = await profilesApi.create(
-        { name: name.trim(), dob: toYMD(dob), relation },
+      // NOTE: avatar upload is not wired yet — there is no avatar presigned-URL
+      // endpoint on the backend. The picked image is shown locally only.
+      const updated = await meApi.update(
+        { name: name.trim(), dob: toYMD(dob) },
         token
       );
 
-      addProfile(created);
+      setMe(updated);
       router.replace('/(app)/(tabs)');
     } catch {
       setError('Could not create the profile. Please try again.');
@@ -132,15 +120,18 @@ export default function CreateProfileScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-slate-50"
+      className="flex-1 bg-genki-bg"
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, padding: 24 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Text className="text-3xl font-extrabold text-slate-900 tracking-tight mt-6 mb-8">
-          Who are you tracking health for?
+        <Text className="text-3xl font-extrabold text-genki-text tracking-tight mt-6 mb-2">
+          About you
+        </Text>
+        <Text className="text-sm text-genki-muted mb-8">
+          Tell us a little about yourself so we can organize your health records.
         </Text>
 
         {/* Avatar */}
@@ -150,44 +141,46 @@ export default function CreateProfileScreen() {
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityLabel="Choose avatar"
-            className="w-24 h-24 rounded-full bg-teal-100 border border-teal-200 items-center justify-center overflow-hidden"
+            className="w-24 h-24 rounded-full bg-genki-gt border-2 border-genki-g8 items-center justify-center overflow-hidden"
           >
             {avatarUri ? (
               <Image source={{ uri: avatarUri }} className="w-24 h-24" />
             ) : (
-              <Text className="text-2xl font-bold text-teal-700">
+              <Text className="text-2xl font-bold text-genki-g8">
                 {initialsFromName(name)}
               </Text>
             )}
           </TouchableOpacity>
-          <Text className="text-xs text-slate-400 mt-2">Tap to add a photo</Text>
+          <Text className="text-xs text-genki-faint mt-2">Tap to add a photo</Text>
         </View>
 
         {/* Name */}
-        <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+        <Text className="text-xs font-semibold text-genki-muted uppercase tracking-wider mb-1.5">
           Name
         </Text>
         <TextInput
           value={name}
           onChangeText={setName}
           placeholder="Full name"
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor="#8FA495"
           autoCapitalize="words"
           returnKeyType="next"
-          className="bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-base text-slate-900 mb-4"
+          className="bg-white border border-genki-border rounded-rs px-4 py-3.5 text-base text-genki-text mb-4"
+          style={shadows.shS}
         />
 
         {/* Date of birth */}
-        <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+        <Text className="text-xs font-semibold text-genki-muted uppercase tracking-wider mb-1.5">
           Date of birth
         </Text>
         <TouchableOpacity
           onPress={() => setShowPicker(s => !s)}
           accessibilityRole="button"
           accessibilityLabel="Select date of birth"
-          className="bg-white border border-slate-200 rounded-xl px-4 py-3.5 mb-2"
+          className="bg-white border border-genki-border rounded-rs px-4 py-3.5 mb-2"
+          style={shadows.shS}
         >
-          <Text className={dob ? 'text-base text-slate-900' : 'text-base text-slate-400'}>
+          <Text className={dob ? 'text-base text-genki-text' : 'text-base text-genki-faint'}>
             {dob ? formatDisplayDate(dob) : 'Select date'}
           </Text>
         </TouchableOpacity>
@@ -205,52 +198,18 @@ export default function CreateProfileScreen() {
                 onPress={() => setShowPicker(false)}
                 className="self-end px-3 py-1"
               >
-                <Text className="text-teal-600 font-semibold">Done</Text>
+                <Text className="text-genki-g5 font-semibold">Done</Text>
               </TouchableOpacity>
             )}
           </View>
         )}
 
-        {/* Relation chips */}
-        <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 mt-2">
-          Relation
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="mb-8"
-          contentContainerStyle={{ gap: 8 }}
-        >
-          {RELATIONS.map(r => {
-            const selected = r.value === relation;
-            return (
-              <TouchableOpacity
-                key={r.value}
-                onPress={() => setRelation(r.value)}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                className={`px-4 py-2 rounded-full border ${
-                  selected
-                    ? 'bg-teal-600 border-teal-600'
-                    : 'bg-white border-slate-200'
-                }`}
-              >
-                <Text
-                  className={`text-sm font-medium ${
-                    selected ? 'text-white' : 'text-slate-600'
-                  }`}
-                >
-                  {r.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        <View className="mb-8" />
 
         {/* Error */}
         {error ? (
-          <View className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
-            <Text className="text-red-600 text-sm font-medium">{error}</Text>
+          <View className="bg-[#FDECEA] rounded-rm px-4 py-3 mb-4">
+            <Text className="text-[#C0392B] text-sm font-medium">{error}</Text>
           </View>
         ) : null}
 
@@ -261,9 +220,10 @@ export default function CreateProfileScreen() {
           activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel="Create profile"
-          className={`py-3.5 rounded-xl items-center justify-center ${
-            isSaving ? 'bg-teal-400' : 'bg-teal-600'
+          className={`py-3.5 rounded-rm items-center justify-center ${
+            isSaving ? 'bg-genki-g5' : 'bg-genki-g8'
           }`}
+          style={isSaving ? undefined : shadows.greenBtn}
         >
           {isSaving ? (
             <ActivityIndicator color="#ffffff" />
@@ -281,7 +241,7 @@ export default function CreateProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel="I'll add this later"
           >
-            <Text className="text-slate-500 text-sm font-medium">I&apos;ll add this later</Text>
+            <Text className="text-genki-muted text-sm font-medium">I&apos;ll add this later</Text>
           </TouchableOpacity>
         )}
       </ScrollView>

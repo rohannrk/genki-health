@@ -1,15 +1,11 @@
 import { pgTable, uuid, varchar, integer, timestamp, index } from 'drizzle-orm/pg-core';
 import { users } from './users';
-import { patientProfiles } from './profiles';
 
 export const shares = pgTable('shares', {
   id: uuid('id').primaryKey().defaultRandom(),
   ownerId: uuid('owner_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  profileId: uuid('profile_id')
-    .notNull()
-    .references(() => patientProfiles.id, { onDelete: 'cascade' }),
   documentIds: uuid('document_ids').array().notNull(),
   token: varchar('token', { length: 128 }).notNull().unique(),
   expiresAt: timestamp('expires_at').notNull(),

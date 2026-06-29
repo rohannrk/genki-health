@@ -10,11 +10,12 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
-import { Ionicons } from '@expo/vector-icons';
+import { ArrowLeft, Check } from 'lucide-react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { documents as documentsApi, shares as sharesApi } from '@genki/api-client';
 import type { MedicalDocument, Share } from '@genki/types';
 import { useProfile } from '../../src/context/ProfileContext';
+import { colors, shadows } from '../../src/theme/genki';
 
 const EXPIRY_OPTIONS = [
   { label: '24 hours', hours: 24 },
@@ -37,8 +38,6 @@ export default function ShareScreen() {
   const { activeProfile } = useProfile();
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
-  const activeProfileRef = useRef(activeProfile);
-  activeProfileRef.current = activeProfile;
 
   const [docs, setDocs] = useState<MedicalDocument[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -48,18 +47,12 @@ export default function ShareScreen() {
   const [isExporting, setIsExporting] = useState(false);
   const [share, setShare] = useState<Share | null>(null);
 
-  const profileId = activeProfile?.id;
   const selectedIds = Object.keys(selected).filter((id) => selected[id]);
 
   const load = useCallback(async () => {
-    const pid = activeProfileRef.current?.id;
-    if (!pid) {
-      setIsLoading(false);
-      return;
-    }
     const token = await getTokenRef.current();
     if (!token) return;
-    const data = await documentsApi.list(pid, token);
+    const data = await documentsApi.list(token);
     setDocs(data.documents);
   }, []);
 
@@ -67,21 +60,21 @@ export default function ShareScreen() {
     load()
       .catch(() => Alert.alert('Error', 'Could not load documents.'))
       .finally(() => setIsLoading(false));
-  }, [profileId]);
+  }, [load]);
 
   const toggle = (id: string) => {
-    setShare(null); // selection changed — invalidate any prior link
+    setShare(null);
     setSelected((s) => ({ ...s, [id]: !s[id] }));
   };
 
   const handleCreateShare = async () => {
-    if (isCreating || !profileId || selectedIds.length === 0) return;
+    if (isCreating || selectedIds.length === 0) return;
     setIsCreating(true);
     try {
       const token = await getTokenRef.current();
       if (!token) throw new Error('No session');
       const created = await sharesApi.create(
-        { profileId, documentIds: selectedIds, expiresInHours: expiryHours },
+        { documentIds: selectedIds, expiresInHours: expiryHours },
         token
       );
       setShare(created);
@@ -107,13 +100,13 @@ export default function ShareScreen() {
   };
 
   const handleExportPdf = async () => {
-    if (isExporting || !profileId || selectedIds.length === 0) return;
+    if (isExporting || selectedIds.length === 0) return;
     setIsExporting(true);
     try {
       const token = await getTokenRef.current();
       if (!token) throw new Error('No session');
       const downloadUrl = await documentsApi.exportPdf(
-        { profileId, documentIds: selectedIds },
+        { documentIds: selectedIds },
         token
       );
       await WebBrowser.openBrowserAsync(downloadUrl);
@@ -126,15 +119,15 @@ export default function ShareScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-slate-50">
-        <ActivityIndicator color="#059669" size="large" />
+      <View className="flex-1 items-center justify-center bg-genki-bg">
+        <ActivityIndicator color={colors.g8} size="large" />
       </View>
     );
   }
 
   return (
     <ScrollView
-      className="flex-1 bg-slate-50"
+      className="flex-1 bg-genki-bg"
       contentContainerStyle={{ padding: 16, paddingBottom: 48 }}
     >
       <View className="flex-row items-center mb-6">
@@ -144,26 +137,26 @@ export default function ShareScreen() {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-back" size={20} color="#0d9488" style={{ marginRight: 12 }} />
+          <ArrowLeft size={20} color={colors.g8} style={{ marginRight: 12 }} />
         </TouchableOpacity>
-        <Text className="text-2xl font-bold text-slate-800">Share Records</Text>
+        <Text className="text-2xl font-bold text-genki-text">Share Records</Text>
       </View>
 
-      {!profileId ? (
-        <Text className="text-sm text-slate-500">Select a patient profile first.</Text>
+      {!activeProfile ? (
+        <Text className="text-sm text-genki-muted">Loading your records…</Text>
       ) : (
         <>
-          <Text className="text-sm text-slate-500 mb-3">
-            Patient: <Text className="font-semibold text-slate-700">{activeProfile?.name}</Text>
+          <Text className="text-sm text-genki-muted mb-3">
+            Sharing records for <Text className="font-semibold text-genki-text">{activeProfile.name}</Text>
           </Text>
 
           {/* Document selection */}
-          <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+          <Text className="text-xs font-semibold text-genki-muted uppercase tracking-wider mb-2">
             Select documents
           </Text>
-          <View className="bg-white rounded-xl border border-slate-200 overflow-hidden mb-4">
+          <View className="bg-white rounded-rm overflow-hidden mb-4" style={shadows.shS}>
             {docs.length === 0 ? (
-              <Text className="text-sm text-slate-400 p-4">No documents to share yet.</Text>
+              <Text className="text-sm text-genki-faint p-4">No documents to share yet.</Text>
             ) : (
               docs.map((doc, i) => {
                 const isOn = !!selected[doc.id];
@@ -174,23 +167,23 @@ export default function ShareScreen() {
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: isOn }}
                     className={`flex-row items-center px-4 py-3 ${
-                      i > 0 ? 'border-t border-slate-100' : ''
+                      i > 0 ? 'border-t border-genki-border' : ''
                     }`}
                   >
                     <View
-                      className={`w-5 h-5 rounded-md border mr-3 items-center justify-center ${
-                        isOn ? 'bg-teal-600 border-teal-600' : 'border-slate-300'
+                      className={`w-5 h-5 rounded-md mr-3 items-center justify-center ${
+                        isOn ? 'bg-genki-g8' : 'border border-genki-border'
                       }`}
                     >
-                      {isOn ? <Ionicons name="checkmark" size={12} color="#ffffff" /> : null}
+                      {isOn ? <Check size={12} color="#ffffff" /> : null}
                     </View>
                     <View className="flex-1">
-                      <Text className="text-sm font-medium text-slate-700">
+                      <Text className="text-sm font-medium text-genki-text">
                         {DOC_TYPE_LABELS[doc.type] ?? doc.type}
                         {doc.date ? ` · ${doc.date}` : ''}
                       </Text>
                       {doc.hospitalName ? (
-                        <Text className="text-xs text-slate-400">{doc.hospitalName}</Text>
+                        <Text className="text-xs text-genki-faint">{doc.hospitalName}</Text>
                       ) : null}
                     </View>
                   </TouchableOpacity>
@@ -200,7 +193,7 @@ export default function ShareScreen() {
           </View>
 
           {/* Expiry selection */}
-          <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+          <Text className="text-xs font-semibold text-genki-muted uppercase tracking-wider mb-2">
             Link expires after
           </Text>
           <View className="flex-row gap-x-3 mb-5">
@@ -213,11 +206,12 @@ export default function ShareScreen() {
                     setShare(null);
                     setExpiryHours(opt.hours);
                   }}
-                  className={`flex-1 rounded-xl border py-2.5 items-center ${
-                    on ? 'border-teal-500 bg-teal-50' : 'border-slate-200 bg-white'
+                  className={`flex-1 rounded-rm border py-2.5 items-center ${
+                    on ? 'border-genki-g8 bg-genki-gt' : 'border-genki-border bg-white'
                   }`}
+                  style={on ? undefined : shadows.shS}
                 >
-                  <Text className={`text-sm font-semibold ${on ? 'text-teal-700' : 'text-slate-600'}`}>
+                  <Text className={`text-sm font-semibold ${on ? 'text-genki-g8' : 'text-genki-muted'}`}>
                     {opt.label}
                   </Text>
                 </TouchableOpacity>
@@ -227,21 +221,22 @@ export default function ShareScreen() {
 
           {/* Generated link */}
           {share ? (
-            <View className="bg-white rounded-xl border border-slate-200 p-4 mb-5">
-              <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+            <View className="bg-white rounded-rm p-4 mb-5" style={shadows.shS}>
+              <Text className="text-xs font-semibold text-genki-muted uppercase tracking-wider mb-2">
                 Share link
               </Text>
-              <Text className="text-xs text-slate-600 mb-1" selectable numberOfLines={2}>
+              <Text className="text-xs text-genki-muted mb-1" selectable numberOfLines={2}>
                 {share.url}
               </Text>
-              <Text className="text-xs text-slate-400 mb-4">
+              <Text className="text-xs text-genki-faint mb-4">
                 Expires {new Date(share.expiresAt).toLocaleString()}
               </Text>
               <TouchableOpacity
                 onPress={handleSendLink}
-                className="bg-teal-600 py-3 rounded-xl items-center justify-center w-full"
+                className="bg-genki-g8 py-3 rounded-rm items-center justify-center w-full"
                 accessibilityRole="button"
                 accessibilityLabel="Send link"
+                style={shadows.greenBtn}
               >
                 <Text className="text-white font-bold text-base">Send link</Text>
               </TouchableOpacity>
@@ -250,11 +245,12 @@ export default function ShareScreen() {
             <TouchableOpacity
               onPress={handleCreateShare}
               disabled={isCreating || selectedIds.length === 0}
-              className={`py-3.5 rounded-xl items-center justify-center mb-3 ${
-                isCreating || selectedIds.length === 0 ? 'bg-teal-400' : 'bg-teal-600'
+              className={`py-3.5 rounded-rm items-center justify-center mb-3 ${
+                isCreating || selectedIds.length === 0 ? 'bg-genki-g5' : 'bg-genki-g8'
               }`}
               accessibilityRole="button"
               accessibilityLabel="Generate share link"
+              style={isCreating || selectedIds.length === 0 ? undefined : shadows.greenBtn}
             >
               {isCreating ? (
                 <ActivityIndicator color="#ffffff" />
@@ -270,20 +266,20 @@ export default function ShareScreen() {
           <TouchableOpacity
             onPress={handleExportPdf}
             disabled={isExporting || selectedIds.length === 0}
-            className={`py-3.5 rounded-xl items-center justify-center border ${
+            className={`py-3.5 rounded-rm items-center justify-center border ${
               isExporting || selectedIds.length === 0
-                ? 'border-slate-200 bg-slate-100'
-                : 'border-teal-600 bg-white'
+                ? 'border-genki-border bg-genki-bg'
+                : 'border-genki-g8 bg-white'
             }`}
             accessibilityRole="button"
             accessibilityLabel="Export selected as PDF"
           >
             {isExporting ? (
-              <ActivityIndicator color="#0d9488" />
+              <ActivityIndicator color={colors.g8} />
             ) : (
               <Text
                 className={`font-bold text-base ${
-                  selectedIds.length === 0 ? 'text-slate-400' : 'text-teal-700'
+                  selectedIds.length === 0 ? 'text-genki-faint' : 'text-genki-g8'
                 }`}
               >
                 Export PDF ({selectedIds.length})

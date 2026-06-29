@@ -10,19 +10,29 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  ArrowLeft,
+  Pencil,
+  CheckCircle2,
+  Clock,
+  Circle,
+  RefreshCw,
+  Sparkles,
+  ChevronUp,
+  ChevronDown,
+} from 'lucide-react-native';
 import * as Linking from 'expo-linking';
 import { documents as docsApi, biomarkers as biomarkersApi } from '@genki/api-client';
 import { MedicalDocument, BiomarkerReading, UpdateBiomarkerReadingInput } from '@genki/types';
 import { formatDate } from '@genki/utils';
-import { useProfile } from '../../../src/context/ProfileContext';
 import BiomarkersReviewCard from '../../../src/features/biomarker/components/BiomarkersReviewCard';
+import { colors, shadows } from '../../../src/theme/genki';
 
 const STATUS_COLORS: Record<string, string> = {
-  ready: 'bg-emerald-100 text-emerald-700',
-  processing: 'bg-amber-100 text-amber-700',
-  uploading: 'bg-blue-100 text-blue-700',
-  error: 'bg-red-100 text-red-700',
+  ready: 'bg-genki-gt text-genki-g8',
+  processing: 'bg-[#FEF3CD] text-[#C47E1A]',
+  uploading: 'bg-[#FEF3CD] text-[#C47E1A]',
+  error: 'bg-[#FDECEA] text-[#C0392B]',
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -49,8 +59,6 @@ export default function DocumentDetailScreen() {
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
 
-  const { activeProfile } = useProfile();
-
   const [doc, setDoc] = useState<(MedicalDocument & { downloadUrl?: string }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
@@ -65,11 +73,11 @@ export default function DocumentDetailScreen() {
 
   // ── Fetch biomarkers for a ready document ──────────────────────────────────
   const fetchReadings = useCallback(
-    async (documentId: string, profileId: string) => {
+    async (documentId: string) => {
       try {
         const token = await getTokenRef.current();
         if (!token) return;
-        const data = await biomarkersApi.listByDocument(documentId, profileId, token);
+        const data = await biomarkersApi.listByDocument(documentId, token);
         setReadings(data);
       } catch {
         // Non-fatal — document is still usable without biomarkers
@@ -91,8 +99,8 @@ export default function DocumentDetailScreen() {
 
         if (data.status === 'processing' || data.status === 'uploading') {
           timer = setTimeout(fetchDoc, 3000);
-        } else if (data.status === 'ready' && activeProfile) {
-          fetchReadings(id, activeProfile.id);
+        } else if (data.status === 'ready') {
+          fetchReadings(id);
         }
       } catch (err) {
         console.error('Failed to load document:', err);
@@ -103,7 +111,7 @@ export default function DocumentDetailScreen() {
 
     fetchDoc();
     return () => clearTimeout(timer);
-  }, [id, activeProfile, fetchReadings]);
+  }, [id, fetchReadings]);
 
   // ── Elapsed timer while processing ────────────────────────────────────────
   const isProcessing = doc?.status === 'processing' || doc?.status === 'uploading';
@@ -139,8 +147,8 @@ export default function DocumentDetailScreen() {
         setDoc(data);
         if (data.status === 'processing' || data.status === 'uploading') {
           setTimeout(poll, 3000);
-        } else if (data.status === 'ready' && activeProfile) {
-          fetchReadings(id, activeProfile.id);
+        } else if (data.status === 'ready') {
+          fetchReadings(id);
         }
       };
       setTimeout(poll, 3000);
@@ -238,30 +246,30 @@ export default function DocumentDetailScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-slate-50">
-        <ActivityIndicator size="large" color="#14532d" />
+      <View className="flex-1 justify-center items-center bg-genki-bg">
+        <ActivityIndicator size="large" color={colors.g8} />
       </View>
     );
   }
 
   if (!doc) {
     return (
-      <View className="flex-1 justify-center items-center bg-slate-50 p-8">
-        <Text className="text-slate-500 text-center">Document not found.</Text>
+      <View className="flex-1 justify-center items-center bg-genki-bg p-8">
+        <Text className="text-genki-muted text-center">Document not found.</Text>
       </View>
     );
   }
 
-  const statusClass = STATUS_COLORS[doc.status] ?? 'bg-slate-100 text-slate-600';
+  const statusClass = STATUS_COLORS[doc.status] ?? 'bg-genki-gtt text-genki-muted';
   const metadata = doc.metadata as Record<string, string>;
 
   return (
-    <View className="flex-1 bg-slate-50">
+    <View className="flex-1 bg-genki-bg">
       {/* ── Header ── */}
-      <View className="bg-white border-b border-slate-200 px-4 pt-14 pb-4">
+      <View className="bg-white px-4 pt-14 pb-4" style={shadows.shS}>
         <TouchableOpacity onPress={() => router.back()} className="mb-3 flex-row items-center">
-          <Ionicons name="arrow-back" size={18} color="#14532d" />
-          <Text style={{ color: '#14532d' }} className="font-semibold ml-1">
+          <ArrowLeft size={18} color={colors.g8} />
+          <Text style={{ color: colors.g8 }} className="font-semibold ml-1">
             Back
           </Text>
         </TouchableOpacity>
@@ -275,10 +283,10 @@ export default function DocumentDetailScreen() {
                   autoFocus
                   maxLength={255}
                   placeholder={TYPE_LABELS[doc.type] ?? 'Document name'}
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={colors.faint}
                   returnKeyType="done"
                   onSubmitEditing={handleSaveTitle}
-                  className="text-xl font-bold text-slate-900 border-b border-primary-600 pb-1"
+                  className="text-xl font-bold text-genki-text border-b border-genki-g8 pb-1"
                 />
                 <View className="flex-row items-center mt-2">
                   <TouchableOpacity
@@ -287,22 +295,22 @@ export default function DocumentDetailScreen() {
                     className="mr-4"
                   >
                     {savingTitle ? (
-                      <ActivityIndicator size="small" color="#14532d" />
+                      <ActivityIndicator size="small" color={colors.g8} />
                     ) : (
-                      <Text style={{ color: '#14532d' }} className="font-semibold text-sm">
+                      <Text style={{ color: colors.g8 }} className="font-semibold text-sm">
                         Save
                       </Text>
                     )}
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => setRenaming(false)} disabled={savingTitle}>
-                    <Text className="text-slate-400 font-semibold text-sm">Cancel</Text>
+                    <Text className="text-genki-faint font-semibold text-sm">Cancel</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             ) : (
               <View className="flex-row items-center">
                 <Text
-                  className="text-xl font-bold text-slate-900 flex-shrink"
+                  className="text-xl font-bold text-genki-text flex-shrink"
                   numberOfLines={2}
                 >
                   {doc.title?.trim() || TYPE_LABELS[doc.type] || 'Document'}
@@ -312,20 +320,20 @@ export default function DocumentDetailScreen() {
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   className="ml-2"
                 >
-                  <Ionicons name="pencil" size={16} color="#94a3b8" />
+                  <Pencil size={16} color={colors.faint} />
                 </TouchableOpacity>
               </View>
             )}
             {doc.title?.trim() && !renaming && (
-              <Text className="text-xs text-slate-400 mt-0.5">
+              <Text className="text-xs text-genki-faint mt-0.5">
                 {TYPE_LABELS[doc.type] ?? doc.type}
               </Text>
             )}
             {doc.hospitalName && (
-              <Text className="text-sm text-slate-500 mt-0.5">{doc.hospitalName}</Text>
+              <Text className="text-sm text-genki-muted mt-0.5">{doc.hospitalName}</Text>
             )}
             {doc.doctorName && (
-              <Text className="text-xs text-slate-400 mt-0.5">{doc.doctorName}</Text>
+              <Text className="text-xs text-genki-faint mt-0.5">{doc.doctorName}</Text>
             )}
           </View>
           <View className={`px-3 py-1 rounded-full ${statusClass.split(' ')[0]}`}>
@@ -335,7 +343,7 @@ export default function DocumentDetailScreen() {
           </View>
         </View>
         {doc.date && (
-          <Text className="text-sm text-slate-500 mt-2">{formatDate(doc.date)}</Text>
+          <Text className="text-sm text-genki-muted mt-2">{formatDate(doc.date)}</Text>
         )}
       </View>
 
@@ -349,20 +357,20 @@ export default function DocumentDetailScreen() {
 
         {/* ── Extracted metadata (diagnosis / treatment) ── */}
         {(metadata.diagnosis || metadata.treatment) && (
-          <View className="bg-white rounded-2xl border border-slate-200 p-4 mb-4">
-            <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+          <View className="bg-white rounded-rl p-4 mb-4" style={shadows.shS}>
+            <Text className="text-[11px] font-bold text-genki-faint uppercase tracking-wider mb-3">
               Extracted Info
             </Text>
             {metadata.diagnosis && (
               <View className="mb-2">
-                <Text className="text-xs text-slate-400 font-medium">Diagnosis</Text>
-                <Text className="text-sm text-slate-800 mt-0.5">{metadata.diagnosis}</Text>
+                <Text className="text-xs text-genki-faint font-medium">Diagnosis</Text>
+                <Text className="text-sm text-genki-text mt-0.5">{metadata.diagnosis}</Text>
               </View>
             )}
             {metadata.treatment && (
               <View>
-                <Text className="text-xs text-slate-400 font-medium">Treatment</Text>
-                <Text className="text-sm text-slate-800 mt-0.5">{metadata.treatment}</Text>
+                <Text className="text-xs text-genki-faint font-medium">Treatment</Text>
+                <Text className="text-sm text-genki-text mt-0.5">{metadata.treatment}</Text>
               </View>
             )}
           </View>
@@ -375,13 +383,13 @@ export default function DocumentDetailScreen() {
             const currentIdx = Math.max(0, STAGE_ORDER.indexOf(stage));
             const remaining = Math.max(0, EST_TOTAL_SECONDS - elapsed);
             return (
-              <View className="bg-amber-50 rounded-2xl border border-amber-200 p-4 mb-4">
+              <View className="rounded-rl p-4 mb-4" style={{ backgroundColor: '#FEF9EC' }}>
                 <View className="flex-row items-center mb-3">
-                  <ActivityIndicator size="small" color="#d97706" />
-                  <Text className="text-amber-800 text-sm font-bold ml-3 flex-1">
+                  <ActivityIndicator size="small" color="#C47E1A" />
+                  <Text className="text-[#7A5010] text-sm font-bold ml-3 flex-1">
                     Processing document…
                   </Text>
-                  <Text className="text-amber-600 text-xs font-medium">{elapsed}s</Text>
+                  <Text className="text-[#C47E1A] text-xs font-medium">{elapsed}s</Text>
                 </View>
                 {STAGES.map((s, i) => {
                   const stageIdx = STAGE_ORDER.indexOf(s.key);
@@ -390,34 +398,19 @@ export default function DocumentDetailScreen() {
                   return (
                     <View key={s.key} className="flex-row items-center py-1">
                       {done ? (
-                        <Ionicons
-                          name="checkmark-circle"
-                          size={18}
-                          color="#059669"
-                          style={{ marginRight: 8 }}
-                        />
+                        <CheckCircle2 size={18} color={colors.g5} style={{ marginRight: 8 }} />
                       ) : active ? (
-                        <Ionicons
-                          name="time-outline"
-                          size={18}
-                          color="#d97706"
-                          style={{ marginRight: 8 }}
-                        />
+                        <Clock size={18} color="#C47E1A" style={{ marginRight: 8 }} />
                       ) : (
-                        <Ionicons
-                          name="ellipse-outline"
-                          size={18}
-                          color="#cbd5e1"
-                          style={{ marginRight: 8 }}
-                        />
+                        <Circle size={18} color="#E0CFA0" style={{ marginRight: 8 }} />
                       )}
                       <Text
                         className={`text-sm ${
                           active
-                            ? 'text-amber-800 font-semibold'
+                            ? 'text-[#7A5010] font-semibold'
                             : done
-                              ? 'text-amber-600'
-                              : 'text-amber-400'
+                              ? 'text-[#C47E1A]'
+                              : 'text-[#C9B98E]'
                         }`}
                       >
                         {s.label}
@@ -425,7 +418,7 @@ export default function DocumentDetailScreen() {
                     </View>
                   );
                 })}
-                <Text className="text-amber-600 text-xs mt-3">
+                <Text className="text-[#C47E1A] text-xs mt-3">
                   {remaining > 0
                     ? `Usually ready in about ${remaining}s. This runs with your AI key.`
                     : 'Taking longer than usual — almost there…'}
@@ -436,22 +429,22 @@ export default function DocumentDetailScreen() {
 
         {/* ── Error state ── */}
         {doc.status === 'error' && (
-          <View className="bg-red-50 rounded-2xl border border-red-200 p-4 mb-4">
-            <Text className="text-red-700 text-sm font-bold mb-1">Processing failed</Text>
-            <Text className="text-red-600 text-sm mb-3">
+          <View className="rounded-rl p-4 mb-4" style={{ backgroundColor: '#FDECEA' }}>
+            <Text className="text-[#C0392B] text-sm font-bold mb-1">Processing failed</Text>
+            <Text className="text-[#C0392B] text-sm mb-3">
               {(metadata.processingError as string) ||
                 'Something went wrong while analysing this document.'}
             </Text>
             <TouchableOpacity
               onPress={handleRetry}
               disabled={retrying}
-              className="bg-red-600 py-3 rounded-xl items-center"
+              className="bg-[#C0392B] py-3 rounded-rm items-center"
             >
               {retrying ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <View className="flex-row items-center gap-1.5">
-                  <Ionicons name="refresh" size={16} color="#ffffff" />
+                  <RefreshCw size={16} color="#ffffff" />
                   <Text className="text-white font-bold text-sm">Retry processing</Text>
                 </View>
               )}
@@ -461,39 +454,39 @@ export default function DocumentDetailScreen() {
 
         {/* ── Processing note (e.g. no AI key) ── */}
         {doc.status === 'ready' && metadata.processingNote ? (
-          <View className="bg-blue-50 rounded-2xl border border-blue-200 p-4 mb-4">
-            <Text className="text-blue-700 text-sm">{metadata.processingNote as string}</Text>
+          <View className="rounded-rl p-4 mb-4" style={{ backgroundColor: '#EDF5FB' }}>
+            <Text className="text-[#185FA5] text-sm">{metadata.processingNote as string}</Text>
           </View>
         ) : null}
 
         {/* ── Raw extracted text (collapsed by default when biomarkers exist) ── */}
         {doc.extractedText ? (
-          <View className="bg-white rounded-2xl border border-slate-200 mb-4 overflow-hidden">
+          <View className="bg-white rounded-rl mb-4 overflow-hidden" style={shadows.shS}>
             <TouchableOpacity
               onPress={() => setShowRawText((v) => !v)}
               className="flex-row items-center justify-between px-4 py-3"
               activeOpacity={0.7}
             >
-              <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <Text className="text-[11px] font-bold text-genki-faint uppercase tracking-wider">
                 Raw Extracted Text
               </Text>
-              <Ionicons
-                name={showRawText ? 'chevron-up' : 'chevron-down'}
-                size={16}
-                color="#94a3b8"
-              />
+              {showRawText ? (
+                <ChevronUp size={16} color={colors.faint} />
+              ) : (
+                <ChevronDown size={16} color={colors.faint} />
+              )}
             </TouchableOpacity>
             {showRawText && (
-              <View className="px-4 pb-4 border-t border-slate-100">
-                <Text className="text-sm text-slate-700 font-mono leading-relaxed mt-3">
+              <View className="px-4 pb-4 border-t border-genki-border">
+                <Text className="text-sm text-genki-text font-mono leading-relaxed mt-3">
                   {doc.extractedText}
                 </Text>
               </View>
             )}
           </View>
         ) : doc.status === 'ready' && readings.length === 0 ? (
-          <View className="bg-white rounded-2xl border border-slate-200 p-4 mb-4 items-center py-8">
-            <Text className="text-slate-400 text-sm">
+          <View className="bg-white rounded-rl p-4 mb-4 items-center py-8" style={shadows.shS}>
+            <Text className="text-genki-faint text-sm">
               No text could be extracted from this document.
             </Text>
           </View>
@@ -501,23 +494,22 @@ export default function DocumentDetailScreen() {
       </ScrollView>
 
       {/* ── Bottom action bar ── */}
-      <View className="p-4 border-t border-slate-200 gap-3">
+      <View className="p-4 bg-white gap-3" style={{ borderTopWidth: 1, borderTopColor: colors.border }}>
         <TouchableOpacity
           onPress={handleSummarise}
           disabled={doc.status !== 'ready'}
-          className={`py-3.5 rounded-2xl items-center ${
-            doc.status === 'ready' ? 'bg-slate-900' : 'bg-slate-200'
+          className={`py-3.5 rounded-rm items-center ${
+            doc.status === 'ready' ? 'bg-genki-g8' : 'bg-genki-gt'
           }`}
         >
           <View className="flex-row items-center gap-2">
-            <Ionicons
-              name="sparkles"
+            <Sparkles
               size={18}
-              color={doc.status === 'ready' ? '#ffffff' : '#94a3b8'}
+              color={doc.status === 'ready' ? '#ffffff' : colors.faint}
             />
             <Text
               className={`font-bold text-base ${
-                doc.status === 'ready' ? 'text-white' : 'text-slate-400'
+                doc.status === 'ready' ? 'text-white' : 'text-genki-faint'
               }`}
             >
               Summarise in Chat
@@ -528,23 +520,23 @@ export default function DocumentDetailScreen() {
         <View className="flex-row gap-3">
           <TouchableOpacity
             onPress={handleViewOriginal}
-            className="flex-1 py-3.5 rounded-2xl items-center border border-slate-200 bg-white"
+            className="flex-1 py-3.5 rounded-rm items-center border border-genki-border bg-white"
           >
-            <Text className="text-slate-700 font-semibold text-base">View Original</Text>
+            <Text className="text-genki-text font-semibold text-base">View Original</Text>
           </TouchableOpacity>
 
           {doc.status === 'ready' && (
             <TouchableOpacity
               onPress={handleRetry}
               disabled={retrying}
-              className="flex-1 py-3.5 rounded-2xl items-center border border-slate-200 bg-white"
+              className="flex-1 py-3.5 rounded-rm items-center border border-genki-border bg-white"
             >
               {retrying ? (
-                <ActivityIndicator color="#475569" />
+                <ActivityIndicator color={colors.muted} />
               ) : (
                 <View className="flex-row items-center gap-1.5">
-                  <Ionicons name="refresh" size={16} color="#334155" />
-                  <Text className="text-slate-700 font-semibold text-base">Re-extract</Text>
+                  <RefreshCw size={16} color={colors.g8} />
+                  <Text className="text-genki-text font-semibold text-base">Re-extract</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -552,7 +544,7 @@ export default function DocumentDetailScreen() {
         </View>
 
         <TouchableOpacity onPress={handleDelete} className="py-2 items-center">
-          <Text className="text-red-600 font-semibold text-sm">Delete document</Text>
+          <Text className="text-[#C0392B] font-semibold text-sm">Delete document</Text>
         </TouchableOpacity>
       </View>
     </View>

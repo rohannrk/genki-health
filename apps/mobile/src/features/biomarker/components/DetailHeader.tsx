@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronLeft, Share2, LucideIcon } from 'lucide-react-native';
 import { SERIF, INK } from '../theme';
+import { colors } from '../../../theme/genki';
 
 type Props = {
   title: string;
@@ -11,10 +12,10 @@ type Props = {
 };
 
 function CircleButton({
-  icon,
+  icon: Icon,
   onPress,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: LucideIcon;
   onPress?: () => void;
 }) {
   return (
@@ -22,9 +23,9 @@ function CircleButton({
       onPress={onPress}
       activeOpacity={0.6}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center"
+      className="w-10 h-10 rounded-full bg-white items-center justify-center"
     >
-      <Ionicons name={icon} size={18} color="#334155" />
+      <Icon size={18} color={colors.g8} />
     </TouchableOpacity>
   );
 }
@@ -32,7 +33,7 @@ function CircleButton({
 export default function DetailHeader({ title, subtitle, onBack, onShare }: Props) {
   return (
     <View className="flex-row items-center px-4 py-2">
-      <CircleButton icon="chevron-back" onPress={onBack} />
+      <CircleButton icon={ChevronLeft} onPress={onBack} />
       <View className="flex-1 items-center px-2">
         <Text
           numberOfLines={1}
@@ -41,12 +42,12 @@ export default function DetailHeader({ title, subtitle, onBack, onShare }: Props
           {title}
         </Text>
         {subtitle ? (
-          <Text className="text-[12px] text-slate-400 mt-0.5" numberOfLines={1}>
+          <Text className="text-[12px] text-genki-faint mt-0.5" numberOfLines={1}>
             {subtitle}
           </Text>
         ) : null}
       </View>
-      <CircleButton icon="share-outline" onPress={onShare} />
+      <CircleButton icon={Share2} onPress={onShare} />
     </View>
   );
 }
